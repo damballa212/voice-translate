@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>实时转译</title>
+<style>
+  :root {
+    --bg: #0a0a14;
+    --surface: #141428;
+    --surface2: #1a1a32;
+    --border: #2a2a44;
+    --text: #e8e8f0;
+    --text-dim: #8888a8;
+    --accent: #f0a030;
+    --accent2: #38bdf8;
+    --danger: #f87171;
+    --green: #34d399;
+    --font-display: 'Georgia', 'Times New Roman', serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 420px;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ---- Header ---- */
+  .header {
+    padding: 48px 24px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .header h1 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  .header .sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .btn-icon {
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s;
+  }
+  .btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-icon:active { background: var(--surface2); }
+
+  /* ---- Lang Bar ---- */
+  .lang-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 24px; flex-shrink: 0;
+  }
+  .lang-tag {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .15s;
+    color: var(--text-dim);
+  }
+  .lang-tag.active { border-color: var(--accent2); color: var(--accent2); }
+  .lang-tag .flag { font-size: 16px; }
+  .lang-swap {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ---- Transcript ---- */
+  .transcript {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .transcript::-webkit-scrollbar { width: 0; }
+  .msg {
+    max-width: 92%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    animation: fadeUp .3s ease;
+  }
+  .msg.source {
+    align-self: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.source .lang-label {
+    font-size: 10px; color: var(--accent); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: .06em; font-weight: 600;
+  }
+  .msg.target {
+    align-self: flex-end;
+    background: var(--surface2);
+    border: 1px solid var(--accent2);
+    border-bottom-right-radius: 4px;
+    color: var(--accent2);
+    margin-top: 8px;
+  }
+  .msg .text {
+    font-size: 14px; line-height: 1.6; word-break: break-word;
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
+  .msg.source {
+    align-self: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.source .lang-label {
+    font-size: 10px; color: var(--text-dim); margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .msg .text {
+    font-size: 14px; line-height: 1.5; word-break: break-word;
+  }
+  .msg.target {
+    align-self: flex-end;
+    background: var(--surface2);
+    border: 1px solid var(--accent2);
+    border-bottom-right-radius: 4px;
+    color: var(--accent2);
+  }
+  .msg .time {
+    font-size: 10px; color: var(--text-dim); margin-top: 4px; text-align: right;
+  }
+  .empty-state {
+    flex: 1; display: flex;
+    align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 14px;
+    text-align: center; line-height: 1.8;
+  }
+
+  /* ---- Mic Button ---- */
+  .mic-area {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 24px 40px;
+    gap: 12px;
+  }
+  .mic-btn {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    transition: all .3s cubic-bezier(.4,0,.2,1);
+    position: relative;
+  }
+  .mic-btn:active { transform: scale(.95); }
+  .mic-btn.recording {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: white;
+    box-shadow: 0 0 0 8px rgba(248,113,113,.2);
+    animation: pulse-ring 1.5s ease infinite;
+  }
+  @keyframes pulse-ring {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(248,113,113,.15); }
+    50% { box-shadow: 0 0 0 16px rgba(248,113,113,0); }
+  }
+  .mic-hint {
+    font-size: 12px; color: var(--text-dim);
+  }
+
+  /* ---- TTS input ---- */
+  .tts-bar {
+    flex-shrink: 0;
+    padding: 8px 24px;
+    display: flex; gap: 8px;
+  }
+  .tts-bar input {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    font-family: var(--font-body);
+  }
+  .tts-bar input:focus { border-color: var(--accent2); }
+  .tts-bar button {
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--accent2);
+    background: transparent;
+    color: var(--accent2);
+    font-size: 14px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all .15s;
+  }
+  .tts-bar button:active { background: var(--accent2); color: var(--bg); }
+
+  /* ---- Settings Overlay ---- */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,.6);
+    display: none;
+    opacity: 0;
+    transition: opacity .3s;
+    justify-content: center;
+    align-items: flex-end;
+  }
+  .overlay.show { display: flex; opacity: 1; }
+  .panel {
+    width: 100%; max-width: 420px;
+    max-height: 80dvh;
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    padding: 12px 24px 40px;
+    overflow-y: auto;
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } }
+  .panel::-webkit-scrollbar { width: 0; }
+  .panel h3 {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 400;
+    padding: 8px 0 16px;
+    text-align: center;
+  }
+  .panel .handle {
+    width: 36px; height: 4px;
+    background: var(--border); border-radius: 2px;
+    margin: 0 auto 8px;
+  }
+  .form-group {
+    margin-bottom: 16px;
+  }
+  .form-group label {
+    display: block; font-size: 12px;
+    color: var(--text-dim); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .form-group select, .form-group input[type=range] {
+    width: 100%; padding: 10px 12px;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text);
+    font-size: 14px; outline: none;
+    font-family: var(--font-body);
+  }
+  .form-group select:focus { border-color: var(--accent2); }
+  .toggle-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0;
+  }
+  .toggle-row span { font-size: 14px; }
+  .toggle {
+    width: 48px; height: 28px;
+    border-radius: 14px;
+    background: var(--border);
+    cursor: pointer;
+    position: relative;
+    transition: background .2s;
+  }
+  .toggle.on { background: var(--accent2); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: white;
+    top: 3px; left: 3px;
+    transition: transform .2s;
+  }
+  .toggle.on::after { transform: translateX(20px); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>实时转译</h1>
+      <div class="sub" id="status">就绪</div>
+    </div>
+    <button class="btn-icon" id="btnSettings" title="设置">⚙</button>
+  </div>
+
+  <!-- Lang Bar -->
+  <div class="lang-bar" id="langBar">
+    <div class="lang-tag active" id="srcLang" onclick="openLangPicker('src')">
+      <span class="flag" id="srcFlag">🌐</span> <span id="srcLabel">自动检测</span>
+    </div>
+    <button class="lang-swap" id="langSwap" onclick="swapLangs()">⇄</button>
+    <div class="lang-tag" id="tgtLang" onclick="openLangPicker('tgt')">
+      <span class="flag" id="tgtFlag">🇨🇳</span> <span id="tgtLabel">中文</span>
+    </div>
+  </div>
+
+  <!-- Transcript: 固定两个气泡, 实时更新 -->
+  <div class="transcript" id="transcript">
+    <div class="empty-state">
+      点击下方麦克风开始<br>说出任意语言，实时转译
+    </div>
+    <div class="msg source" id="sourceBubble" style="display:none">
+      <div class="lang-label" id="sourceLangLabel"></div>
+      <div class="text" id="sourceText"></div>
+    </div>
+    <div class="msg target" id="targetBubble" style="display:none">
+      <div class="text" id="targetText"></div>
+    </div>
+  </div>
+
+  <!-- TTS input -->
+  <div class="tts-bar" id="ttsBar" style="display:none">
+    <input type="text" id="ttsInput" placeholder="输入文字 → 语音朗读" onkeydown="if(event.key==='Enter')doTts()">
+    <button onclick="doTts()">朗读</button>
+  </div>
+
+  <!-- Mic -->
+  <div class="mic-area">
+    <button class="mic-btn" id="micBtn" onclick="toggleMic()">🎤</button>
+    <div class="mic-hint" id="micHint">点击开始</div>
+  </div>
+
+</div>
+
+<!-- Settings Overlay -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeSettings()">
+  <div class="panel">
+    <div class="handle"></div>
+    <h3>设置</h3>
+
+    <div class="form-group">
+      <label>识别语言</label>
+      <select id="setAsrLang"></select>
+    </div>
+
+    <div class="form-group">
+      <label>翻译目标</label>
+      <select id="setTargetLang"></select>
+    </div>
+
+    <div class="toggle-row">
+      <span>开启翻译</span>
+      <div class="toggle" id="toggleTranslate" onclick="this.classList.toggle('on');updateConfig()"></div>
+    </div>
+
+    <div class="toggle-row">
+      <span>语音朗读 (TTS)</span>
+      <div class="toggle" id="toggleTts" onclick="this.classList.toggle('on');updateConfig()"></div>
+    </div>
+
+    <div class="form-group" id="voiceGroup" style="display:none">
+      <label>TTS 音色</label>
+      <select id="setVoice"></select>
+    </div>
+
+    <div class="toggle-row">
+      <span>显示 TTS 输入框</span>
+      <div class="toggle" id="toggleTtsBar" onclick="toggleTtsInput()"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 状态
+// ============================================================
+let ws = null;
+let mic = null;
+let audioCtx = null;
+let recording = false;
+let config = {
+  lang: 'auto', target: 'zh',
+  translate: true, tts: false,
+  voice: 'Cherry',
+};
+
+// ============================================================
+// WebSocket
+// ============================================================
+function connectWs() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.onopen = () => { console.log('WS open'); setStatus('已连接'); };
+  ws.onclose = () => { console.log('WS close'); setStatus('断开, 重连中...'); setTimeout(connectWs, 2000); };
+  ws.onerror = (e) => { console.error('WS error', e); setStatus('连接失败'); };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleMessage(msg);
+  };
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'ready':
+      setStatus('就绪 — 开始说话');
+      // 显示气泡
+      hide(document.getElementById('transcript').querySelector('.empty-state'));
+      showSourceBubble(config.lang);
+      if (config.translate) showTargetBubble();
+      break;
+    case 'transcript':
+      updateSourceBubble(msg.text, msg.lang);
+      break;
+    case 'translation':
+      if (config.translate) {
+        showTargetBubble();
+        updateTargetBubble(msg.text);
+      }
+      break;
+    case 'audio':
+      playAudio(msg.data, msg.sample_rate);
+      break;
+    case 'stopped':
+      setStatus('已停止');
+      break;
+    case 'config_updated':
+      config.translate = msg.translate;
+      config.tts = msg.tts;
+      if (config.translate) showTargetBubble();
+      else hideTargetBubble();
+      break;
+    case 'error':
+      setStatus('错误: ' + msg.message);
+      break;
+  }
+}
+
+let _sourceAccum = [];
+let _targetAccum = [];
+
+function showSourceBubble(lang) {
+  document.getElementById('sourceBubble').style.display = 'block';
+  const langMap = { zh:'中文', en:'English', ja:'日本語', ko:'한국어',
+    de:'Deutsch', fr:'Français', es:'Español', ar:'العربية', hi:'हिन्दी', auto:'检测' };
+  document.getElementById('sourceLangLabel').textContent = langMap[lang] || lang;
+}
+
+function updateSourceBubble(text, lang) {
+  _sourceAccum.push(text);
+  document.getElementById('sourceBubble').style.display = 'block';
+  document.getElementById('sourceText').textContent = _sourceAccum.join(' ');
+  document.getElementById('sourceLangLabel').textContent = (lang === 'zh' ? '中文' : lang === 'en' ? 'English' : lang || '检测');
+  scrollTranscript();
+}
+
+function showTargetBubble() {
+  document.getElementById('targetBubble').style.display = 'block';
+}
+
+function hideTargetBubble() {
+  document.getElementById('targetBubble').style.display = 'none';
+}
+
+function updateTargetBubble(text) {
+  _targetAccum.push(text);
+  document.getElementById('targetBubble').style.display = 'block';
+  document.getElementById('targetText').textContent = _targetAccum.join(' ');
+  scrollTranscript();
+}
+
+function scrollTranscript() {
+  const div = document.getElementById('transcript');
+  div.scrollTop = div.scrollHeight;
+}
+
+function hide(el) { if (el) el.style.display = 'none'; }
+
+// 重置气泡
+function resetBubbles() {
+  _sourceAccum = [];
+  _targetAccum = [];
+  document.getElementById('sourceText').textContent = '';
+  document.getElementById('targetText').textContent = '';
+  document.getElementById('sourceBubble').style.display = 'none';
+  document.getElementById('targetBubble').style.display = 'none';
+  const empty = document.getElementById('transcript').querySelector('.empty-state');
+  if (empty) empty.style.display = '';
+}
+
+function now() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
+function setStatus(s) {
+  document.getElementById('status').textContent = s;
+}
+
+// ============================================================
+// 麦克风
+// ============================================================
+async function toggleMic() {
+  console.log('toggleMic called, recording:', recording);
+  setStatus('准备中...');
+
+  if (recording) {
+    stopMic();
+    return;
+  }
+
+  setStatus('请求麦克风...');
+
+  try {
+    // 先请求麦克风
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    console.log('AudioContext created, sampleRate:', audioCtx.sampleRate);
+    const actualRate = audioCtx.sampleRate;
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: { ideal: 1 },
+        echoCancellation: true,
+        noiseSuppression: true,
+      }
+    });
+    console.log('Microphone granted');
+
+    // 确保 WebSocket 已连接
+    let waited = 0;
+    while (!ws || ws.readyState !== WebSocket.OPEN) {
+      if (waited > 10) { setStatus('WebSocket 连接超时'); return; }
+      await new Promise(r => setTimeout(r, 500));
+      waited++;
+      setStatus('等待连接... ' + waited);
+    }
+    console.log('WS ready, sending start');
+
+    // 通知服务器
+    ws.send(JSON.stringify({
+      command: 'start',
+      lang: config.lang,
+      translate: config.translate,
+      tts: config.tts,
+      voice: config.voice,
+    }));
+    setStatus('连接中...');
+
+    mic = audioCtx.createMediaStreamSource(stream);
+    const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    mic.connect(processor);
+    processor.connect(audioCtx.destination);
+
+    processor.onaudioprocess = (e) => {
+      if (!recording) return;
+      const input = e.inputBuffer.getChannelData(0);
+      // 降采样到 16kHz
+      let samples = input;
+      if (actualRate !== 16000 && actualRate > 0) {
+        const ratio = actualRate / 16000;
+        const outLen = Math.floor(input.length / ratio);
+        samples = new Float32Array(outLen);
+        for (let i = 0; i < outLen; i++) {
+          const srcIdx = i * ratio;
+          const srcFloor = Math.floor(srcIdx);
+          const frac = srcIdx - srcFloor;
+          const a = input[srcFloor] || 0;
+          const b = input[srcFloor + 1] || a;
+          samples[i] = a + (b - a) * frac;
+        }
+      }
+      const pcm = new Int16Array(samples.length);
+      for (let i = 0; i < samples.length; i++) {
+        pcm[i] = Math.max(-32768, Math.min(32767, samples[i] * 32768));
+      }
+      const bytes = new Uint8Array(pcm.buffer);
+      const chunks = [];
+      const CHUNK = 4096;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK)));
+      }
+      const b64 = btoa(chunks.join(''));
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ command: 'audio', data: b64 }));
+      }
+    };
+
+    recording = true;
+    console.log('Recording started, mic active');
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('micBtn').textContent = '■';
+    document.getElementById('micHint').textContent = '录音中...';
+    setStatus('已就绪 — 开始说话');
+
+  } catch (err) {
+    console.error('Mic error:', err.name, err.message);
+    recording = false;
+    if (audioCtx) { audioCtx.close(); audioCtx = null; mic = null; }
+    setStatus('错误: ' + (err.message || '麦克风不可用'));
+    document.getElementById('micBtn').classList.remove('recording');
+    document.getElementById('micBtn').textContent = '🎤';
+    document.getElementById('micHint').textContent = '点击开始';
+    // 通知服务器停止
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ command: 'stop' }));
+    }
+  }
+}
+
+function stopMic() {
+  recording = false;
+  if (audioCtx) { audioCtx.close(); audioCtx = null; mic = null; }
+  document.getElementById('micBtn').classList.remove('recording');
+  document.getElementById('micBtn').textContent = '🎤';
+  document.getElementById('micHint').textContent = '点击开始';
+  if (ws) ws.send(JSON.stringify({ command: 'stop' }));
+  // 保留气泡内容不重置, 下次点击重新开始
+  resetBubbles();
+}
+
+// ============================================================
+// TTS
+// ============================================================
+function doTts() {
+  const input = document.getElementById('ttsInput');
+  const text = input.value.trim();
+  if (!text || !ws) return;
+
+  // 显示在气泡中
+  hide(document.getElementById('transcript').querySelector('.empty-state'));
+  showSourceBubble(config.lang);
+  _sourceAccum.push(text);
+  document.getElementById('sourceText').textContent = _sourceAccum.join(' ');
+
+  ws.send(JSON.stringify({ command: 'tts', text }));
+  input.value = '';
+
+  // 如果开了翻译, 同时触发翻译
+  if (config.translate) {
+    showTargetBubble();
+  }
+}
+
+function playAudio(b64, sampleRate) {
+  try {
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const pcm = new Int16Array(bytes.buffer);
+    // AudioContext: 优先用指定采样率, 不支持则用默认
+    let ctx;
+    try {
+      ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+    } catch(e) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const actualRate = ctx.sampleRate;
+    console.log('Playing audio:', pcm.length, 'samples, rate:', actualRate, '(wanted:', sampleRate, ')');
+
+    // 如果需要重采样
+    let samples = Array.from(pcm).map(v => v / 32768);
+    if (actualRate !== sampleRate) {
+      const ratio = sampleRate / actualRate;
+      const newLen = Math.round(pcm.length * ratio);
+      const resampled = new Float32Array(newLen);
+      for (let i = 0; i < newLen; i++) {
+        const srcIdx = i / ratio;
+        const srcFloor = Math.floor(srcIdx);
+        const frac = srcIdx - srcFloor;
+        const a = samples[srcFloor] || 0;
+        const b = samples[srcFloor + 1] || a;
+        resampled[i] = a + (b - a) * frac;
+      }
+      samples = resampled;
+    }
+
+    const buf = ctx.createBuffer(1, samples.length, actualRate);
+    buf.getChannelData(0).set(samples);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start();
+    console.log('Audio started');
+  } catch(e) {
+    console.error('playAudio error:', e);
+  }
+}
+
+// ============================================================
+// 设置面板
+// ============================================================
+function openSettings() {
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSettings() {
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function toggleTtsInput() {
+  const on = document.getElementById('toggleTtsBar').classList.toggle('on');
+  document.getElementById('ttsBar').style.display = on ? 'flex' : 'none';
+}
+
+function swapLangs() {
+  const tmp = config.lang;
+  config.lang = config.target === 'zh' ? 'en' : config.target;
+  config.target = tmp === 'auto' ? 'zh' : tmp;
+  updateLangDisplay();
+  updateConfig();
+}
+
+function openLangPicker(which) {
+  // Simple: cycle through common languages
+  const common = [
+    { id:'auto', label:'自动检测' }, { id:'zh', label:'中文' },
+    { id:'en', label:'English' }, { id:'ja', label:'日本語' },
+    { id:'ko', label:'한국어' }, { id:'hi', label:'हिन्दी' },
+    { id:'ar', label:'العربية' }, { id:'de', label:'Deutsch' },
+    { id:'fr', label:'Français' }, { id:'es', label:'Español' },
+    { id:'pt', label:'Português' }, { id:'ru', label:'Русский' },
+  ];
+  const current = which === 'src' ? config.lang : config.target;
+  let idx = common.findIndex(l => l.id === current);
+  idx = (idx + 1) % common.length;
+  const next = common[idx];
+  if (which === 'src') { config.lang = next.id; }
+  else { config.target = next.id; }
+  updateLangDisplay();
+  updateConfig();
+}
+
+// 国旗映射
+const FLAGS = {
+  auto:'🌐', zh:'🇨🇳', en:'🇬🇧', ja:'🇯🇵', ko:'🇰🇷', de:'🇩🇪',
+  fr:'🇫🇷', es:'🇪🇸', pt:'🇧🇷', ar:'🇸🇦', hi:'🇮🇳', id:'🇮🇩',
+  th:'🇹🇭', tr:'🇹🇷', vi:'🇻🇳', ru:'🇷🇺', it:'🇮🇹',
+  nl:'🇳🇱', sv:'🇸🇪', da:'🇩🇰', fi:'🇫🇮', pl:'🇵🇱',
+  cs:'🇨🇿', fil:'🇵🇭', ms:'🇲🇾', no:'🇳🇴',
+};
+
+function updateLangDisplay() {
+  const labels = { auto:'自动检测', zh:'中文', en:'英语', ja:'日语',
+    ko:'韩语', de:'德语', fr:'法语', es:'西班牙语', pt:'葡萄牙语',
+    ar:'阿拉伯语', hi:'印地语', ru:'俄语', id:'印尼语', th:'泰语',
+    tr:'土耳其语', vi:'越南语', it:'意大利语',
+    nl:'荷兰语', sv:'瑞典语', da:'丹麦语', fi:'芬兰语', pl:'波兰语',
+    cs:'捷克语', fil:'菲律宾语', ms:'马来语', no:'挪威语' };
+  document.getElementById('srcFlag').textContent = FLAGS[config.lang] || '🌐';
+  document.getElementById('srcLabel').textContent = labels[config.lang] || config.lang;
+  document.getElementById('tgtFlag').textContent = FLAGS[config.target] || '🇨🇳';
+  document.getElementById('tgtLabel').textContent = labels[config.target] || config.target;
+
+  // 翻译开关控制目标语言显示
+  const show = config.translate;
+  document.getElementById('tgtLang').style.display = show ? 'block' : 'none';
+  document.getElementById('langSwap').style.display = show ? 'flex' : 'none';
+}
+
+function updateConfig() {
+  const t = document.getElementById('toggleTranslate');
+  const tt = document.getElementById('toggleTts');
+  config.translate = t.classList.contains('on');
+  config.tts = tt.classList.contains('on');
+  config.lang = document.getElementById('setAsrLang')?.value || config.lang;
+  config.target = document.getElementById('setTargetLang')?.value || config.target;
+  config.voice = document.getElementById('setVoice')?.value || config.voice;
+
+  document.getElementById('voiceGroup').style.display = config.tts ? 'block' : 'none';
+  updateLangDisplay();  // 更新国旗 + 翻译开关显隐
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ command: 'update_config', ...config }));
+  }
+}
+
+// ============================================================
+// 初始化
+// ============================================================
+async function init() {
+  // 加载语言列表
+  try {
+    const r = await fetch('/langs');
+    const langs = await r.json();
+    const asrSel = document.getElementById('setAsrLang');
+    const tgtSel = document.getElementById('setTargetLang');
+    const voiceSel = document.getElementById('setVoice');
+
+    // 只给目标语言加中文选项
+    tgtSel.innerHTML = '<option value="zh">中文</option>' +
+      Object.entries(langs).filter(([k]) => k !== 'auto').map(([k,v]) => `<option value="${k}">${v}</option>`).join('');
+    tgtSel.value = 'zh';
+
+    asrSel.innerHTML = '<option value="auto">自动检测</option>' +
+      Object.entries(langs).filter(([k]) => k !== 'auto').map(([k,v]) => `<option value="${k}">${v}</option>`).join('');
+    asrSel.value = 'auto';
+
+    const voices = await fetch('/voices');
+    const v = await voices.json();
+    voiceSel.innerHTML = v.map(x => `<option value="${x}">${x}</option>`).join('');
+    voiceSel.value = 'Cherry';
+
+    document.getElementById('toggleTranslate').classList.add('on');
+    document.getElementById('setTargetLang').value = 'zh';
+
+    // 绑定变化
+    asrSel.onchange = () => { config.lang = asrSel.value; updateLangDisplay(); updateConfig(); };
+    tgtSel.onchange = () => { config.target = tgtSel.value; updateLangDisplay(); updateConfig(); };
+    voiceSel.onchange = () => { config.voice = voiceSel.value; updateConfig(); };
+  } catch(e) {}
+
+  updateLangDisplay();
+  connectWs();
+}
+
+document.getElementById('btnSettings').onclick = openSettings;
+init();
+</script>
+</body>
+</html>
