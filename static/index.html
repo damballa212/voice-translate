@@ -458,10 +458,10 @@
         font-size: 16px;
       }
 
-      /* Engine bar — Notion 文档式, sliding underline (shared element 共享移动) */
+      /* Engine bar — 当前隐藏 (单引擎部署), 切换按钮 DOM 保留以兼容 JS */
       .engine-bar {
+        display: none !important;
         padding: 6px 22px 0;
-        display: flex;
         gap: 0;
         border-bottom: 1px solid var(--line);
         flex-shrink: 0;
@@ -716,15 +716,23 @@
       }
       .cap-current .ch {
         display: inline-block;
-        animation: cap-char-in 40ms linear both;
+        animation: cap-char-in 260ms var(--e-out) both;
         white-space: pre;
       }
       .cap-fade-out {
         animation: cap-fade-out var(--d-base) var(--e-in) both !important;
       }
       @keyframes cap-char-in {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+          filter: blur(2px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+          filter: blur(0);
+        }
       }
       @keyframes cap-old-settle {
         from {
@@ -1158,6 +1166,51 @@
           opacity: 0;
         }
       }
+      /* mic 启用瞬间: scale spring + 外扩光环 burst (临时, 600ms 后自动 remove) */
+      .mic.just-started {
+        animation: mic-burst 600ms var(--e-spring) both;
+      }
+      .mic.just-started > .mic-burst-ring {
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        border: 3px solid var(--orange);
+        animation: mic-burst-ring 600ms var(--e-out) both;
+        pointer-events: none;
+        z-index: 2;
+      }
+      @keyframes mic-burst {
+        0% {
+          transform: scale(1);
+          box-shadow: 0 4px 12px rgba(217, 119, 87, 0.4);
+        }
+        25% {
+          transform: scale(0.9);
+          box-shadow:
+            0 4px 12px rgba(217, 119, 87, 0.4),
+            0 0 0 0 rgba(217, 119, 87, 0.7);
+        }
+        60% {
+          transform: scale(1.1);
+          box-shadow:
+            0 8px 20px rgba(217, 119, 87, 0.55),
+            0 0 0 18px rgba(217, 119, 87, 0);
+        }
+        100% {
+          transform: scale(1);
+          box-shadow: 0 4px 12px rgba(217, 119, 87, 0.4);
+        }
+      }
+      @keyframes mic-burst-ring {
+        0% {
+          opacity: 1;
+          transform: scale(0.7);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(2.4);
+        }
+      }
       .mic.recording {
         animation: mic-bp 1.4s ease-in-out infinite;
       }
@@ -1384,6 +1437,54 @@
       .form-group input:focus,
       .form-group select:focus {
         border-color: var(--orange);
+      }
+      /* Auth login/register tabs */
+      .auth-tab {
+        flex: 1;
+        padding: 12px 8px;
+        background: none;
+        border: none;
+        color: var(--dim);
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: color var(--d-fast) var(--e-out);
+      }
+      .auth-tab.active {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .auth-tab-underline {
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        width: 50%;
+        height: 2px;
+        background: var(--orange);
+        border-radius: 2px 2px 0 0;
+        transition: transform var(--d-base) var(--e-out);
+      }
+      #authTabs[data-active="register"] .auth-tab-underline {
+        transform: translateX(100%);
+      }
+      .auth-submit {
+        width: 100%;
+        padding: 14px;
+        background: var(--orange);
+        border: none;
+        color: white;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 12px;
+        box-shadow: 0 4px 12px rgba(217, 119, 87, 0.3);
+      }
+      #authLoginPane,
+      #authRegisterPane {
+        animation: stagger-fade-up var(--d-base) var(--e-out) both;
       }
       .panel button.primary {
         width: 100%;
@@ -1717,62 +1818,98 @@
             flex-direction: column;
           "
         >
-          <div class="form-group">
-            <label>邮箱</label>
-            <input
-              type="email"
-              id="loginEmail"
-              placeholder="you@example.com"
-              autocomplete="username"
-              onkeydown="if (event.key === 'Enter') doLogin();"
-            />
-          </div>
-          <div class="form-group">
-            <label>密码</label>
-            <input
-              type="password"
-              id="loginPwd"
-              placeholder="管理员分发的密码"
-              autocomplete="current-password"
-              onkeydown="if (event.key === 'Enter') doLogin();"
-            />
-          </div>
-          <button
-            class="primary"
-            onclick="doLogin()"
-            style="
-              width: 100%;
-              padding: 14px;
-              background: var(--orange);
-              border: none;
-              color: white;
-              border-radius: 12px;
-              font-size: 15px;
-              font-weight: 600;
-              cursor: pointer;
-              margin-top: 12px;
-              box-shadow: 0 4px 12px rgba(217, 119, 87, 0.3);
-            "
-          >
-            登录
-          </button>
+          <!-- Tab 切换: 登录 / 注册 -->
           <div
+            id="authTabs"
             style="
-              margin-top: auto;
-              padding-top: 24px;
-              text-align: center;
-              font-family: var(--mono);
-              font-size: 11px;
-              color: var(--dim);
-              line-height: 1.6;
+              display: flex;
+              gap: 0;
+              border-bottom: 1px solid var(--line);
+              margin-bottom: 18px;
+              position: relative;
             "
           >
-            账号由管理员分发<br />
-            管理员请用
-            <code style="color: var(--orange)"
-              >uv run admin_cli.py create &lt;email&gt; &lt;昵称&gt;</code
+            <button
+              type="button"
+              class="auth-tab active"
+              data-tab="login"
+              onclick="switchAuthTab('login')"
             >
-            创建用户
+              登录
+            </button>
+            <button
+              type="button"
+              class="auth-tab"
+              data-tab="register"
+              onclick="switchAuthTab('register')"
+            >
+              注册
+            </button>
+            <div class="auth-tab-underline"></div>
+          </div>
+
+          <!-- 登录表单 -->
+          <div id="authLoginPane">
+            <div class="form-group">
+              <label>邮箱</label>
+              <input
+                type="email"
+                id="loginEmail"
+                placeholder="you@example.com"
+                autocomplete="username"
+                onkeydown="if (event.key === 'Enter') doLogin();"
+              />
+            </div>
+            <div class="form-group">
+              <label>密码</label>
+              <input
+                type="password"
+                id="loginPwd"
+                placeholder="请输入密码"
+                autocomplete="current-password"
+                onkeydown="if (event.key === 'Enter') doLogin();"
+              />
+            </div>
+            <button class="primary auth-submit" onclick="doLogin()">
+              登录
+            </button>
+          </div>
+
+          <!-- 注册表单 -->
+          <div id="authRegisterPane" style="display: none">
+            <div class="form-group">
+              <label>邮箱</label>
+              <input
+                type="email"
+                id="regEmail"
+                placeholder="you@example.com"
+                autocomplete="username"
+                onkeydown="if (event.key === 'Enter') doRegister();"
+              />
+            </div>
+            <div class="form-group">
+              <label>昵称</label>
+              <input
+                type="text"
+                id="regNick"
+                placeholder="留空将使用邮箱前缀"
+                maxlength="20"
+                onkeydown="if (event.key === 'Enter') doRegister();"
+              />
+            </div>
+            <div class="form-group">
+              <label>密码 (≥ 6 位)</label>
+              <input
+                type="password"
+                id="regPwd"
+                placeholder="设置一个密码"
+                autocomplete="new-password"
+                onkeydown="if (event.key === 'Enter') doRegister();"
+              />
+            </div>
+            <button class="primary auth-submit" onclick="doRegister()">
+              注册并登录
+            </button>
           </div>
         </div>
       </div>
@@ -1895,7 +2032,7 @@
           </button>
           <div class="mic-info">
             <div class="ttl" id="micSoloTitle">点击开始</div>
-            <div class="meta" id="micSoloMeta">引擎: <b>⚡ OpenAI</b></div>
+            <div class="meta" id="micSoloMeta">就绪</div>
           </div>
           <button
             class="dock-act"
@@ -1975,7 +2112,7 @@
           </button>
           <div class="mic-info">
             <div class="ttl" id="micRoomTitle">点击发言</div>
-            <div class="meta" id="micRoomMeta"><b>⚡ OpenAI</b></div>
+            <div class="meta" id="micRoomMeta">就绪</div>
           </div>
           <button class="dock-act" onclick="copyTranscript()" title="复制全部">
             📋
@@ -2136,7 +2273,7 @@
     <div class="net-mask" id="netMask">
       <div class="box">
         <h3>⚠️ 网络检测</h3>
-        <div class="desc" id="netMaskDesc">正在检测国内/国外网络…</div>
+        <div class="desc" id="netMaskDesc">正在检测网络…</div>
         <div class="spinner" id="netSpinner"></div>
         <button
           class="retry-btn"
@@ -2480,11 +2617,7 @@
             if (m.recording_id) currentRecordingId = m.recording_id;
             break;
           case "ready": {
-            const eng =
-              m.engine === "openai"
-                ? "⚡ OpenAI 直译 (国外)"
-                : "🔁 Qwen+DeepSeek (国内)";
-            onBackendReady(eng);
+            onBackendReady();
             if (m.recording_id) currentRecordingId = m.recording_id;
             break;
           }
@@ -2686,12 +2819,13 @@
             });
           } else {
             // 文本不连续 → 整体替换 (DashScope 整句到达 / src→tgt 切换)
-            // 整段一次到位, 不再 stagger (跟得上语音节奏更重要)
+            // 整段一次到位 → 逐字 stagger 浮出 (反正不是流式, 用户在乎"出现感")
             cur.innerHTML = "";
-            Array.from(currentText).forEach((ch) => {
+            Array.from(currentText).forEach((ch, i) => {
               const span = document.createElement("span");
               span.className = "ch";
               span.textContent = ch;
+              span.style.animationDelay = i * 22 + "ms";
               cur.appendChild(span);
             });
           }
@@ -2993,51 +3127,25 @@
         document.getElementById("netSpinner").style.display = "block";
         document.getElementById("netRetry").style.display = "none";
         document.getElementById("netMaskDesc").textContent =
-          "正在检测国内/国外网络…";
+          "正在检测网络…";
         document.getElementById("netMask").classList.add("show");
-        const [intl, cn] = await Promise.all([
-          _probe("https://www.gstatic.com/generate_204"),
-          _probe("https://www.baidu.com/favicon.ico"),
-        ]);
-        networkState = { intl, cn };
+        const cn = await _probe("https://www.baidu.com/favicon.ico");
+        networkState = { intl: null, cn };
         applyNetworkState();
       }
 
       function applyNetworkState() {
-        const { intl, cn } = networkState;
+        const { cn } = networkState;
         const mask = document.getElementById("netMask");
-        if (!intl && !cn) {
+        if (!cn) {
           document.getElementById("netSpinner").style.display = "none";
           document.getElementById("netRetry").style.display = "inline-block";
           document.getElementById("netMaskDesc").innerHTML =
-            "国内 (baidu) 和国外 (google) 都不可达<br>请检查网络后重试";
+            "网络不可达<br>请检查网络后重试";
           mask.classList.add("show");
           return;
         }
         mask.classList.remove("show");
-        // 给 engine button 标 disabled
-        document
-          .querySelectorAll('.engine-btn[data-engine="openai"]')
-          .forEach((b) => {
-            b.disabled = !intl;
-            b.classList.toggle("disabled", !intl);
-            b.title = intl ? "" : "国外网络不可达 (google.com 探测失败)";
-          });
-        document
-          .querySelectorAll('.engine-btn[data-engine="dashscope"]')
-          .forEach((b) => {
-            b.disabled = !cn;
-            b.classList.toggle("disabled", !cn);
-            b.title = cn ? "" : "国内网络不可达 (baidu.com 探测失败)";
-          });
-        // 当前 engine 如果不可达 → 切到可达的(只在两端都还能通时才切)
-        if (config.engine === "openai" && !intl && cn) {
-          config.engine = "dashscope";
-          toast("国外网络不通,已切到 Qwen+DP4");
-        } else if (config.engine === "dashscope" && !cn && intl) {
-          config.engine = "openai";
-          toast("国内网络不通,已切到 OpenAI");
-        }
         syncEngineUI();
       }
 
@@ -3093,14 +3201,7 @@
         document.querySelectorAll(".engine-btn").forEach((b) => {
           b.classList.toggle("active", b.dataset.engine === config.engine);
         });
-        const lbl =
-          config.engine === "openai" ? "⚡ OpenAI (国外)" : "Qwen+DP4 (国内)";
-        const m = document.getElementById("micSoloMeta");
-        if (m) m.innerHTML = `引擎: <b>${lbl}</b>`;
-        const r = document.getElementById("micRoomMeta");
-        if (r) r.innerHTML = `<b>${lbl}</b>`;
-        // 共享 underline 滑动到 active 按钮
-        requestAnimationFrame(syncEngineUnderline);
+        // engine-bar 已隐藏, 不再向 mic-info 写引擎品牌
       }
 
       function syncEngineUnderline() {
@@ -3326,6 +3427,7 @@
           recording = true;
           backendReady = false;
           b.classList.add("connecting");
+          playMicBurst(b);
           setMicTitle("⏳ 连接中,请稍候…", true);
           showBusyBanner("正在连接后端,请稍候…");
           startVAD(); // 后台并行启动, init 期间 vadInstance===null 不门控
@@ -3439,6 +3541,25 @@
         }
       }
 
+      // mic 启用瞬间 burst: scale spring + 外扩光环, 一次性 600ms
+      function playMicBurst(btn) {
+        if (!btn) return;
+        btn.classList.remove("just-started");
+        // 清理可能残留的 ring
+        const old = btn.querySelector(".mic-burst-ring");
+        if (old) old.remove();
+        // force reflow 重启 animation
+        void btn.offsetWidth;
+        btn.classList.add("just-started");
+        const ring = document.createElement("div");
+        ring.className = "mic-burst-ring";
+        btn.appendChild(ring);
+        setTimeout(() => {
+          btn.classList.remove("just-started");
+          ring.remove();
+        }, 620);
+      }
+
       function setMicTitle(s, warn = false) {
         const a = document.getElementById("micSoloTitle");
         const b = document.getElementById("micRoomTitle");
@@ -3462,14 +3583,14 @@
       }
 
       // 后端 ready 回调: connecting → recording
-      function onBackendReady(engLabel) {
+      function onBackendReady() {
         backendReady = true;
         document.querySelectorAll(".mic.connecting").forEach((b) => {
           b.classList.remove("connecting");
           b.classList.add("recording");
         });
         hideBusyBanner();
-        setMicTitle(`${engLabel} · 录音中`, false);
+        setMicTitle("录音中…", false);
         startWaveViz();
       }
 
@@ -3671,6 +3792,55 @@
       // Auth
       // ============================================================
       let currentUser = null;
+
+      function switchAuthTab(tab) {
+        const tabs = document.getElementById("authTabs");
+        if (tabs) tabs.dataset.active = tab;
+        document.querySelectorAll(".auth-tab").forEach((b) => {
+          b.classList.toggle("active", b.dataset.tab === tab);
+        });
+        const loginPane = document.getElementById("authLoginPane");
+        const regPane = document.getElementById("authRegisterPane");
+        if (tab === "login") {
+          loginPane.style.display = "block";
+          regPane.style.display = "none";
+        } else {
+          loginPane.style.display = "none";
+          regPane.style.display = "block";
+        }
+      }
+
+      async function doRegister() {
+        const email = document.getElementById("regEmail").value.trim();
+        const nickname = document.getElementById("regNick").value.trim();
+        const pwd = document.getElementById("regPwd").value;
+        if (!email || !pwd) {
+          toast("邮箱和密码必填");
+          return;
+        }
+        if (pwd.length < 6) {
+          toast("密码至少 6 位");
+          return;
+        }
+        try {
+          const r = await fetch("/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password: pwd, nickname }),
+          });
+          if (!r.ok) {
+            const e = await r.json().catch(() => ({}));
+            toast(e.detail || "注册失败");
+            return;
+          }
+          const data = await r.json();
+          currentUser = data.user;
+          toast("注册成功, 欢迎 " + (data.user.nickname || data.user.email));
+          onAuthSuccess();
+        } catch (e) {
+          toast("网络错误");
+        }
+      }
 
       async function doLogin() {
         const email = document.getElementById("loginEmail").value.trim();

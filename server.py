@@ -381,10 +381,11 @@ def translate(text, target_lang="zh"):
 # ASR 客户端 (内部类, 用于 server)
 # ============================================================
 class ASRClient:
-    def __init__(self, lang, on_transcript):
+    def __init__(self, lang, on_transcript, on_partial=None):
         self.ws = None
         self.lang = lang
         self.on_transcript = on_transcript
+        self.on_partial = on_partial   # ASR 实时 partial 字符回调 (delta 模式)
         self.session_ready = threading.Event()
         self.done = threading.Event()
         self.latest_stash = ""
@@ -415,7 +416,8 @@ class ASRClient:
         elif t == "session.updated":
             self.session_ready.set()
         elif t == "conversation.item.input_audio_transcription.text":
-            # 实时流式 stash
+            # 实时流式 stash — 只内部存留 (completed 缺 transcript 时兜底),
+            # 不推前端: DashScope partial 会反复自我修正, 字幕区跳变扰人
             stash = ev.get("stash", "")
             if stash:
                 self.latest_stash = stash
@@ -1162,8 +1164,24 @@ async def get_voices():
 
 @app.post("/auth/register")
 async def auth_register(request: Request):
-    """开放注册已关闭 — 账号由管理员通过 admin_cli.py 分发"""
-    raise HTTPException(403, "注册已关闭, 请联系管理员获取账号")
+    """开放自主注册 — 邮箱 + 密码 ≥ 6 位"""
+    body = await request.json()
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+    nickname = (body.get("nickname") or "").strip() or email.split("@")[0]
+    if not email or "@" not in email or "." not in email:
+        raise HTTPException(400, "邮箱格式不正确")
+    if len(password) < 6:
+        raise HTTPException(400, "密码至少 6 位")
+    if db.find_user_by_email(email):
+        raise HTTPException(409, "该邮箱已注册, 请直接登录")
+    user = db.create_user(email, password, nickname)
+    if not user:
+        raise HTTPException(500, "注册失败, 请稍后再试")
+    token = db.create_session(user["id"])
+    resp = JSONResponse({"user": user})
+    _set_session_cookie(resp, token)
+    return resp
 
 
 @app.post("/auth/login")
