@@ -23,19 +23,19 @@
 <table>
 <tr>
 <td width="33%" align="center">
+<img src="docs/screenshots/landing.png" alt="主页" width="100%"><br>
 <b>🏠 主页</b><br>
-<sub>单人 / 会议 双入口</sub><br><br>
-<em>暖色调 Workspace 风,移动端优先</em>
+<sub>单人 / 会议 双入口,暖色调 Workspace 风</sub>
 </td>
 <td width="33%" align="center">
+<img src="docs/screenshots/solo.png" alt="单人字幕" width="100%"><br>
 <b>🎙 单人字幕</b><br>
-<sub>Apple Live Captions 风</sub><br><br>
-<em>灰小字历史 + 黑大字当前句 + 真实 FFT 音波</em>
+<sub>Apple Live Captions 风 + 真实 FFT 音波</sub>
 </td>
 <td width="33%" align="center">
+<img src="docs/screenshots/room.png" alt="多人会议" width="100%"><br>
 <b>👥 多人会议</b><br>
-<sub>邀请码加入,各自听本语</sub><br><br>
-<em>原文 + 译文双行,按发言时间排序</em>
+<sub>邀请码加入,各成员听本语</sub>
 </td>
 </tr>
 </table>
@@ -119,41 +119,17 @@ open http://localhost:8800
 
 ## 🏗 架构
 
-```
-                            ┌─────────────────────────────┐
-                            │  Browser (Vanilla JS SPA)   │
-                            │  • Web Audio FFT 音波       │
-                            │  • Silero VAD ONNX (浏览器) │
-                            │  • Apple Live Captions UI   │
-                            └──────────────┬──────────────┘
-                                           │
-                          WebSocket (PCM16 24kHz, JSON 命令)
-                                           │
-                            ┌──────────────▼──────────────┐
-                            │   FastAPI + WebSocket        │
-                            │  • RoomManager (内存 + db)   │
-                            │  • RecordingSession 延迟创建 │
-                            │  • 试用限制 + 反幻觉过滤     │
-                            └──┬───────────────────────┬───┘
-                               │                       │
-                ┌──────────────▼──────┐      ┌─────────▼─────────┐
-                │  引擎路由            │      │  SQLite (WAL)     │
-                │  pick_backend()      │      │  users / sessions │
-                └─┬────────────────┬──┘      │  recordings       │
-                  │                │         │  rooms / messages │
-        Qwen 模式 │                │ OpenAI  └───────────────────┘
-                  │                │ 模式
-    ┌─────────────▼──┐      ┌──────▼──────────────────┐
-    │ DashScope WS   │      │ OpenAI Realtime WS      │
-    │ Qwen3-ASR ─→   │      │ gpt-realtime-translate  │
-    │ DeepSeek HTTP→ │      │ (语音→译文 端到端 delta) │
-    │ Qwen3-TTS WS  │      │                         │
-    └────────────────┘      └─────────────────────────┘
-```
+<div align="center">
+<img src="docs/architecture.png" alt="架构图" width="80%">
+</div>
 
-**Engine pick 规则**(`pick_backend`):
-- `engine=openai` + `translate=true` + target ∈ OpenAI 13 种 → OpenAI 端到端
-- 其他 → DashScope (Qwen3-ASR + DeepSeek + 可选 Qwen3-TTS)
+- **Browser**:Vanilla JS SPA + Web Audio FFT 音波 + Silero VAD ONNX + Apple Live Captions UI
+- **WebSocket**:PCM16 24kHz 上行 + JSON 控制命令 + transcript / translation / audio 下行
+- **FastAPI Server**:RoomManager(内存 + db fallback)、RecordingSession 延迟创建、试用限制、反幻觉过滤
+- **引擎**:`pick_backend()` 智能路由
+  - `engine=openai` + `translate=true` + target ∈ OpenAI 13 种 → **OpenAI Realtime** 端到端
+  - 其他 → **Qwen3-ASR + DeepSeek + Qwen3-TTS** 三跳链路
+- **存储**:SQLite WAL 单文件,5 张表(`users` / `sessions` / `recordings` / `rooms` / `room_messages`),per-call connection 无锁并发
 
 ---
 
