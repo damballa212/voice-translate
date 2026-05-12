@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Admin · 实时翻译</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #fdfaf3;
+        --paper-2: #f5f0e3;
+        --line: #ebe4d2;
+        --line-2: #d8cfb6;
+        --ink: #2b2620;
+        --ink-soft: #5a544a;
+        --dim: #948a78;
+        --orange: #d97757;
+        --orange-deep: #b85a3e;
+        --green: #587a4f;
+        --plum: #8a4f6e;
+        --teal: #4d7a8a;
+        --sand: #b8964f;
+        --sans: "DM Sans", system-ui, sans-serif;
+        --mono: "DM Mono", ui-monospace, monospace;
+        --cn: "Noto Sans SC", sans-serif;
+        --d-fast: 160ms;
+        --d-base: 240ms;
+        --d-slow: 360ms;
+        --e-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --e-spring: cubic-bezier(0.2, 0.9, 0.25, 1.15);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        font-family: var(--sans);
+        background: var(--paper);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      body {
+        min-height: 100dvh;
+        padding: 24px 22px 64px;
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 28px;
+        animation: enter 360ms var(--e-out) both;
+      }
+      .head .back {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--line);
+        background: white;
+        border-radius: 10px;
+        font-size: 18px;
+        cursor: pointer;
+        color: var(--ink-soft);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform var(--d-fast) var(--e-spring);
+      }
+      .head .back:active {
+        transform: scale(0.94);
+      }
+      .head h1 {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.4px;
+      }
+      .head .sub {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--dim);
+      }
+      .live-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: var(--green);
+        border-radius: 50%;
+        margin-right: 4px;
+        vertical-align: 1px;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.4;
+        }
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 32px;
+      }
+      .card {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px 18px 16px;
+        animation: enter 360ms var(--e-out) both;
+      }
+      .card:nth-child(1) {
+        animation-delay: 0ms;
+      }
+      .card:nth-child(2) {
+        animation-delay: 60ms;
+      }
+      .card:nth-child(3) {
+        animation-delay: 120ms;
+      }
+      .card:nth-child(4) {
+        animation-delay: 180ms;
+      }
+      .card:nth-child(5) {
+        animation-delay: 240ms;
+      }
+      .card:nth-child(6) {
+        animation-delay: 300ms;
+      }
+      @keyframes enter {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .card .label {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+      }
+      .card .value {
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1.1;
+        color: var(--ink);
+        letter-spacing: -0.5px;
+      }
+      .card .delta {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-soft);
+        margin-top: 6px;
+      }
+      .card .delta .up {
+        color: var(--green);
+        font-weight: 600;
+      }
+      .card.accent {
+        background: linear-gradient(
+          135deg,
+          rgba(217, 119, 87, 0.08) 0%,
+          rgba(217, 119, 87, 0.02) 100%
+        );
+        border-color: rgba(217, 119, 87, 0.25);
+      }
+      .card.accent .value {
+        color: var(--orange-deep);
+      }
+      .section {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 18px;
+        animation: enter var(--d-slow) var(--e-out) 220ms both;
+      }
+      .section h2 {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .section h2 .pill {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--dim);
+        background: var(--paper-2);
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
+      /* SVG chart */
+      svg.chart {
+        width: 100%;
+        height: 180px;
+        display: block;
+      }
+      .chart-tick {
+        font-family: var(--mono);
+        font-size: 10px;
+        fill: var(--dim);
+      }
+      .chart-line {
+        fill: none;
+        stroke: var(--orange);
+        stroke-width: 2;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+      }
+      .chart-area {
+        fill: rgba(217, 119, 87, 0.12);
+      }
+      .chart-dot {
+        fill: var(--orange);
+        stroke: white;
+        stroke-width: 2;
+      }
+      .chart-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        fill: var(--ink-soft);
+      }
+      /* Top users table */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        text-align: left;
+        padding: 10px 8px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 500;
+        border-bottom: 1px solid var(--line);
+      }
+      td {
+        padding: 10px 8px;
+        font-size: 13px;
+        color: var(--ink);
+        border-bottom: 1px solid var(--paper-2);
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      td.num {
+        font-family: var(--mono);
+        font-weight: 600;
+        text-align: right;
+      }
+      td.dim {
+        color: var(--dim);
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+      .empty {
+        text-align: center;
+        padding: 32px 12px;
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--line);
+        border-top-color: var(--orange);
+        border-radius: 50%;
+        animation: spin 800ms linear infinite;
+        vertical-align: -2px;
+        margin-right: 6px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="head">
+        <a class="back" href="/" title="返回主页">‹</a>
+        <h1>📊 数据后台</h1>
+        <div class="sub" id="lastUpdate">
+          <span class="live-dot"></span>每 30s 自动刷新
+        </div>
+      </div>
+
+      <div class="grid" id="overviewGrid">
+        <div class="card empty">
+          <span class="spinner"></span>加载中…
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>过去 7 天 — 录音会话趋势 <span class="pill" id="dailyTotal">—</span></h2>
+        <svg class="chart" id="dailyChart" viewBox="0 0 600 180"></svg>
+      </div>
+
+      <div class="section">
+        <h2>用户排行 <span class="pill">TOP 10</span></h2>
+        <div id="topUsers">
+          <div class="empty"><span class="spinner"></span>加载中…</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function fmtNum(n) {
+        if (n == null) return "—";
+        return new Intl.NumberFormat("zh-CN").format(n);
+      }
+      function fmtTimeAgo(ts) {
+        if (!ts) return "—";
+        const diff = Date.now() / 1000 - ts;
+        if (diff < 60) return "刚刚";
+        if (diff < 3600) return Math.floor(diff / 60) + " 分钟前";
+        if (diff < 86400) return Math.floor(diff / 3600) + " 小时前";
+        if (diff < 30 * 86400) return Math.floor(diff / 86400) + " 天前";
+        const d = new Date(ts * 1000);
+        return `${d.getMonth() + 1}/${d.getDate()}`;
+      }
+
+      function renderOverview(s) {
+        const u = s.users || {};
+        const r = s.recordings || {};
+        const rm = s.rooms || {};
+        const cards = [
+          {
+            label: "总用户",
+            value: fmtNum(u.total),
+            delta: `<span class="up">+${fmtNum(u.new_7d || 0)}</span> 近 7 天`,
+            accent: true,
+          },
+          {
+            label: "活跃用户 (7d)",
+            value: fmtNum(u.active_7d),
+            delta: `${fmtNum(u.active_30d)} · 30 天`,
+          },
+          {
+            label: "总录音会话",
+            value: fmtNum(r.total),
+            delta: `今日 <span class="up">${fmtNum(r.today)}</span> · 7d ${fmtNum(r.last_7d)}`,
+            accent: true,
+          },
+          {
+            label: "翻译条目",
+            value: fmtNum(r.entries_total),
+            delta: "累计已翻译句子数",
+          },
+          {
+            label: "会议房间",
+            value: fmtNum(rm.total),
+            delta: `进行中 ${fmtNum(rm.active)} · 消息 ${fmtNum(rm.messages)}`,
+          },
+        ];
+        const grid = document.getElementById("overviewGrid");
+        grid.innerHTML = cards
+          .map(
+            (c) => `
+          <div class="card${c.accent ? " accent" : ""}">
+            <div class="label">${c.label}</div>
+            <div class="value">${c.value}</div>
+            <div class="delta">${c.delta}</div>
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      function renderDaily(items) {
+        const total = items.reduce((a, b) => a + b.count, 0);
+        document.getElementById("dailyTotal").textContent =
+          total + " 次 · 7d";
+        const svg = document.getElementById("dailyChart");
+        const W = 600,
+          H = 180,
+          PAD_L = 40,
+          PAD_R = 16,
+          PAD_T = 20,
+          PAD_B = 28;
+        const innerW = W - PAD_L - PAD_R;
+        const innerH = H - PAD_T - PAD_B;
+        const max = Math.max(1, ...items.map((d) => d.count));
+        const step = items.length > 1 ? innerW / (items.length - 1) : 0;
+        const points = items.map((d, i) => {
+          const x = PAD_L + step * i;
+          const y = PAD_T + innerH - (d.count / max) * innerH;
+          return { x, y, ...d };
+        });
+        const linePath = points
+          .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+          .join(" ");
+        const areaPath =
+          linePath +
+          ` L ${points[points.length - 1].x} ${PAD_T + innerH}` +
+          ` L ${points[0].x} ${PAD_T + innerH} Z`;
+        // y 轴 ticks (0, max/2, max)
+        const yTicks = [0, Math.round(max / 2), max];
+        const yTickEls = yTicks
+          .map((v) => {
+            const y = PAD_T + innerH - (v / max) * innerH;
+            return `
+            <line x1="${PAD_L}" y1="${y}" x2="${W - PAD_R}" y2="${y}"
+              stroke="var(--line)" stroke-width="1" stroke-dasharray="${v === 0 ? "0" : "2 3"}" />
+            <text x="${PAD_L - 6}" y="${y + 3}" text-anchor="end" class="chart-tick">${v}</text>
+          `;
+          })
+          .join("");
+        const xLabels = points
+          .map(
+            (p) =>
+              `<text x="${p.x}" y="${H - 8}" text-anchor="middle" class="chart-tick">${p.date}</text>`,
+          )
+          .join("");
+        const dots = points
+          .map(
+            (p) =>
+              `<circle class="chart-dot" cx="${p.x}" cy="${p.y}" r="4">
+            <title>${p.date}: ${p.count}</title>
+           </circle>
+           <text x="${p.x}" y="${p.y - 10}" text-anchor="middle" class="chart-label">${p.count}</text>`,
+          )
+          .join("");
+        svg.innerHTML = `
+          ${yTickEls}
+          <path class="chart-area" d="${areaPath}" />
+          <path class="chart-line" d="${linePath}" />
+          ${dots}
+          ${xLabels}
+        `;
+      }
+
+      function renderTopUsers(rows) {
+        const el = document.getElementById("topUsers");
+        if (!rows.length) {
+          el.innerHTML = '<div class="empty">还没有用户</div>';
+          return;
+        }
+        el.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>用户</th>
+                <th style="text-align:right">录音数</th>
+                <th class="dim">最近活跃</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows
+                .map(
+                  (u, i) => `
+                <tr>
+                  <td class="dim" style="width:32px">${i + 1}</td>
+                  <td>
+                    <div style="font-weight:600">${escapeHtml(u.nickname || u.email)}</div>
+                    <div class="dim" style="font-size:10px">${escapeHtml(u.email)}</div>
+                  </td>
+                  <td class="num">${fmtNum(u.rec_count)}</td>
+                  <td class="dim">${fmtTimeAgo(u.last_active)}</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        `;
+      }
+
+      function escapeHtml(s) {
+        return String(s || "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      async function loadStats() {
+        try {
+          const r = await fetch("/admin/api/stats");
+          if (r.status === 401) {
+            location.href = "/";
+            return;
+          }
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const data = await r.json();
+          renderOverview(data.overview);
+          renderDaily(data.daily || []);
+          renderTopUsers(data.top_users || []);
+        } catch (e) {
+          console.error("[admin] load failed", e);
+        }
+      }
+
+      loadStats();
+      setInterval(loadStats, 30000);
+    </script>
+  </body>
+</html>

@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from contextlib import contextmanager
+from datetime import datetime
 from typing import Optional
 
 DB_PATH = os.getenv("DB_PATH", "app.db")
@@ -336,6 +337,104 @@ def rooms_for_user(user_id: int) -> list:
             WHERE r.host_user_id = ? OR rm.user_id = ?
             ORDER BY r.created_at DESC
         """, (user_id, user_id)).fetchall()
+        return [dict(r) for r in rows]
+
+
+# ============================================================
+# Stats / analytics 聚合查询 (admin dashboard 用)
+# ============================================================
+def count_recordings_by_user(user_id: int) -> int:
+    """单用户已创建的 recording 数 (试用次数限制用)"""
+    with conn() as c:
+        row = c.execute(
+            "SELECT COUNT(*) AS n FROM recordings WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        return row["n"] if row else 0
+
+
+def stats_overview() -> dict:
+    """全站概览: 用户 / 录音 / 房间各项 count + 最近 7/30 天增量"""
+    now = time.time()
+    d7 = now - 7 * 86400
+    d30 = now - 30 * 86400
+    with conn() as c:
+        users_total = c.execute("SELECT COUNT(*) AS n FROM users").fetchone()["n"]
+        users_7d = c.execute(
+            "SELECT COUNT(*) AS n FROM users WHERE created_at >= ?", (d7,)
+        ).fetchone()["n"]
+        users_30d = c.execute(
+            "SELECT COUNT(*) AS n FROM users WHERE created_at >= ?", (d30,)
+        ).fetchone()["n"]
+        rec_total = c.execute("SELECT COUNT(*) AS n FROM recordings").fetchone()["n"]
+        rec_today = c.execute(
+            "SELECT COUNT(*) AS n FROM recordings WHERE created_at >= ?", (now - 86400,)
+        ).fetchone()["n"]
+        rec_7d = c.execute(
+            "SELECT COUNT(*) AS n FROM recordings WHERE created_at >= ?", (d7,)
+        ).fetchone()["n"]
+        rec_30d = c.execute(
+            "SELECT COUNT(*) AS n FROM recordings WHERE created_at >= ?", (d30,)
+        ).fetchone()["n"]
+        rooms_total = c.execute("SELECT COUNT(*) AS n FROM rooms").fetchone()["n"]
+        rooms_active = c.execute(
+            "SELECT COUNT(*) AS n FROM rooms WHERE closed_at IS NULL"
+        ).fetchone()["n"]
+        room_msgs = c.execute("SELECT COUNT(*) AS n FROM room_messages").fetchone()["n"]
+        entries_total = 0
+        for r in c.execute("SELECT entries_json FROM recordings").fetchall():
+            try:
+                entries_total += len(json.loads(r["entries_json"] or "[]"))
+            except Exception:
+                pass
+        active_7d = c.execute(
+            "SELECT COUNT(DISTINCT user_id) AS n FROM recordings WHERE created_at >= ?",
+            (d7,),
+        ).fetchone()["n"]
+        active_30d = c.execute(
+            "SELECT COUNT(DISTINCT user_id) AS n FROM recordings WHERE created_at >= ?",
+            (d30,),
+        ).fetchone()["n"]
+    return {
+        "users": {"total": users_total, "new_7d": users_7d, "new_30d": users_30d,
+                  "active_7d": active_7d, "active_30d": active_30d},
+        "recordings": {"total": rec_total, "today": rec_today,
+                       "last_7d": rec_7d, "last_30d": rec_30d,
+                       "entries_total": entries_total},
+        "rooms": {"total": rooms_total, "active": rooms_active, "messages": room_msgs},
+        "generated_at": now,
+    }
+
+
+def daily_recordings(days: int = 7) -> list:
+    """过去 N 天每日 recording 创建数, 返回 [{date: 'MM-DD', count: N}, ...]"""
+    out = []
+    now = time.time()
+    with conn() as c:
+        for i in range(days - 1, -1, -1):
+            day_start = now - (i + 1) * 86400
+            day_end = now - i * 86400
+            n = c.execute(
+                "SELECT COUNT(*) AS n FROM recordings WHERE created_at >= ? AND created_at < ?",
+                (day_start, day_end),
+            ).fetchone()["n"]
+            date = datetime.fromtimestamp(day_end - 1).strftime("%m-%d")
+            out.append({"date": date, "count": n})
+    return out
+
+
+def top_users_by_recordings(limit: int = 10) -> list:
+    """录音数 top N 用户 (含 last_active = 最近一条 recording 时间)"""
+    with conn() as c:
+        rows = c.execute("""
+            SELECT u.id, u.email, u.nickname,
+                   COUNT(r.id) AS rec_count,
+                   MAX(r.created_at) AS last_active
+            FROM users u
+            LEFT JOIN recordings r ON r.user_id = u.id
+            GROUP BY u.id
+            ORDER BY rec_count DESC, last_active DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
         return [dict(r) for r in rows]
 
 

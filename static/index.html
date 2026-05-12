@@ -1690,6 +1690,168 @@
       }
 
       /* ============================================================
+         Trial limit 弹框 — 试用次数用完时显示
+         ============================================================ */
+      #trialModal {
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        background: rgba(43, 38, 32, 0.55);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        display: none;
+        opacity: 0;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        transition: opacity var(--d-base) var(--e-out);
+      }
+      #trialModal.show {
+        display: flex;
+        opacity: 1;
+      }
+      #trialModal.closing {
+        opacity: 0;
+      }
+      #trialModal .card {
+        background: var(--paper);
+        border-radius: 20px;
+        padding: 28px 26px 22px;
+        max-width: 360px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+        animation: trial-pop var(--d-slow) var(--e-spring) both;
+        transform-origin: center bottom;
+      }
+      #trialModal.closing .card {
+        animation: trial-pop-out calc(var(--d-base) * 0.6) var(--e-in) forwards;
+      }
+      @keyframes trial-pop {
+        0% {
+          transform: scale(0.7) translateY(20px);
+          opacity: 0;
+        }
+        60% {
+          transform: scale(1.05) translateY(-4px);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1) translateY(0);
+          opacity: 1;
+        }
+      }
+      @keyframes trial-pop-out {
+        from {
+          transform: scale(1);
+          opacity: 1;
+        }
+        to {
+          transform: scale(0.92) translateY(12px);
+          opacity: 0;
+        }
+      }
+      #trialModal .icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 14px;
+        font-size: 32px;
+        animation: trial-icon-spin var(--d-slow) var(--e-spring) 100ms both;
+      }
+      @keyframes trial-icon-spin {
+        from {
+          transform: rotate(-20deg) scale(0.5);
+          opacity: 0;
+        }
+        to {
+          transform: rotate(0) scale(1);
+          opacity: 1;
+        }
+      }
+      #trialModal h2 {
+        font-size: 19px;
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 8px;
+        letter-spacing: -0.3px;
+      }
+      #trialModal .desc {
+        font-size: 13px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+        margin-bottom: 6px;
+      }
+      #trialModal .count {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--orange);
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin-bottom: 18px;
+      }
+      #trialModal .contact {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--dim);
+        line-height: 1.6;
+        margin-bottom: 16px;
+        padding: 10px 12px;
+        background: var(--paper-2);
+        border-radius: 10px;
+      }
+      #trialModal .actions {
+        display: flex;
+        gap: 10px;
+      }
+      #trialModal button {
+        flex: 1;
+        padding: 12px;
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: transform var(--d-fast) var(--e-spring);
+      }
+      #trialModal button:active {
+        transform: scale(0.96);
+      }
+      #trialModal button.primary {
+        background: var(--orange);
+        color: white;
+        box-shadow: 0 4px 12px rgba(217, 119, 87, 0.35);
+      }
+      #trialModal button.ghost {
+        background: var(--paper-2);
+        color: var(--ink-soft);
+      }
+
+      /* Trial 剩余次数 badge (mic-info 内显示) */
+      .trial-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 700;
+        border-radius: 999px;
+        letter-spacing: 0.3px;
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+      .trial-pill.empty {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      /* ============================================================
          SPLASH (首次访问 1.2s 品牌时刻)
          ============================================================ */
       #splash {
@@ -2263,6 +2425,31 @@
       </div>
     </div>
 
+    <!-- Trial limit 弹框 -->
+    <div id="trialModal" role="dialog" aria-labelledby="trialTitle">
+      <div class="card">
+        <div class="icon">⏰</div>
+        <h2 id="trialTitle">试用次数已用完</h2>
+        <div class="desc">
+          感谢你尝试我们的实时翻译服务<br />
+          继续使用请联系管理员升级账号
+        </div>
+        <div class="count" id="trialCount">3 / 3 已使用</div>
+        <div class="contact">
+          需要更多额度? 邮件联系
+          <br /><strong style="color: var(--orange)"
+            >bringleyeropoli25@gmail.com</strong
+          >
+        </div>
+        <div class="actions">
+          <button class="ghost" onclick="closeTrialModal()">我知道了</button>
+          <button class="primary" onclick="closeTrialModal(); openHistory();">
+            查看记录
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="toast" id="toast"></div>
     <div id="busyBanner">
       <span class="spin"></span
@@ -2571,6 +2758,7 @@
         mode = "idle";
         roomState = null;
         show("viewLanding");
+        refreshTrialStatus(); // 录音结束后回首页, 刷新试用次数显示
       }
 
       function enterSolo() {
@@ -2637,8 +2825,13 @@
             // server confirms; no UI change needed
             break;
           case "error":
-            toast(m.message || "错误");
-            if (recording) stopMic("错误");
+            if (m.code === "trial_limit") {
+              if (recording) stopMic("试用次数已用完");
+              showTrialModal(m.used, m.limit);
+            } else {
+              toast(m.message || "错误");
+              if (recording) stopMic("错误");
+            }
             break;
           case "room_joined":
             onRoomJoined(m);
@@ -3766,6 +3959,27 @@
       // ============================================================
       // Toast
       // ============================================================
+      // ============================================================
+      // Trial limit 弹框
+      // ============================================================
+      function showTrialModal(used, limit) {
+        const el = document.getElementById("trialModal");
+        const cnt = document.getElementById("trialCount");
+        if (cnt && used != null && limit != null) {
+          cnt.textContent = `${used} / ${limit} 已使用`;
+        }
+        if (el) {
+          el.classList.remove("closing");
+          el.classList.add("show");
+        }
+      }
+      function closeTrialModal() {
+        const el = document.getElementById("trialModal");
+        if (!el) return;
+        el.classList.add("closing");
+        setTimeout(() => el.classList.remove("show", "closing"), 150);
+      }
+
       let _toastTimer;
       let _toastHideTimer;
       function toast(msg) {
@@ -3886,12 +4100,31 @@
 
       function onAuthSuccess() {
         show("viewLanding");
-        // 用户昵称显示在 landing
-        const subEl = document.querySelector("#viewLanding .hero .sub");
-        if (subEl && currentUser) {
-          subEl.innerHTML = `欢迎,<b>${escapeHtml(currentUser.nickname)}</b> · <a onclick="doLogout()" style="color:var(--orange);cursor:pointer;text-decoration:underline">退出</a>`;
-        }
+        renderUserBadge();
         connectWs();
+      }
+
+      function renderUserBadge() {
+        const subEl = document.querySelector("#viewLanding .hero .sub");
+        if (!subEl || !currentUser) return;
+        const trial = currentUser.trial;
+        let trialPill = "";
+        if (trial && trial.limit) {
+          const remain = Math.max(0, trial.limit - trial.used);
+          const cls = remain === 0 ? "trial-pill empty" : "trial-pill";
+          trialPill = `<span class="${cls}" title="试用剩余次数">试用 ${remain}/${trial.limit}</span>`;
+        }
+        subEl.innerHTML = `欢迎,<b>${escapeHtml(currentUser.nickname)}</b>${trialPill} · <a onclick="doLogout()" style="color:var(--orange);cursor:pointer;text-decoration:underline">退出</a>`;
+      }
+
+      async function refreshTrialStatus() {
+        try {
+          const r = await fetch("/auth/me");
+          if (r.ok) {
+            currentUser = await r.json();
+            renderUserBadge();
+          }
+        } catch (e) {}
       }
 
       function escapeHtml(s) {

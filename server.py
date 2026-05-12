@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 from openai_translator import OpenAITranslator, OPENAI_LANGS
 from logger import log, ok, err
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 import uvicorn
 import db
 
@@ -60,6 +60,9 @@ TTS_LANG_MAP = {
 
 ENGINE_OPENAI = "openai"
 ENGINE_DASHSCOPE = "dashscope"
+
+# 试用次数限制: 每个用户最多创建 N 个 recording. 0 表示不限制。可通过环境变量覆盖。
+TRIAL_LIMIT = int(os.getenv("TRIAL_LIMIT", "3"))
 
 
 def pick_backend(config):
@@ -835,6 +838,18 @@ async def ws_endpoint(ws: WebSocket):
             cmd = msg.get("command")
 
             if cmd == "start":
+                # 试用限制: 每用户最多 TRIAL_LIMIT 个 recording (TRIAL_LIMIT=0 表示不限)
+                used = db.count_recordings_by_user(user["id"])
+                if TRIAL_LIMIT and used >= TRIAL_LIMIT:
+                    log("ws", f"⚠ trial limit reached for user {user['id']} ({used}/{TRIAL_LIMIT})")
+                    await outbox.put({
+                        "type": "error",
+                        "code": "trial_limit",
+                        "message": f"试用次数已用完 ({used}/{TRIAL_LIMIT})",
+                        "used": used,
+                        "limit": TRIAL_LIMIT,
+                    })
+                    continue
                 config.update({
                     "lang": msg.get("lang", config["lang"]),
                     "target": msg.get("target", config["target"]),
@@ -1212,7 +1227,8 @@ async def auth_me(request: Request):
     u = _cookie_user(request)
     if not u:
         raise HTTPException(401, "未登录")
-    return u
+    used = db.count_recordings_by_user(u["id"])
+    return {**u, "trial": {"used": used, "limit": TRIAL_LIMIT}}
 
 
 @app.get("/recordings")
@@ -1306,6 +1322,31 @@ async def export_room(code: str, request: Request):
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename={code}-{int(time.time())}.md"},
     )
+
+
+# ============================================================
+# Admin dashboard
+# ============================================================
+@app.get("/admin/stats")
+async def admin_stats_page(request: Request):
+    """admin dashboard HTML 单页 — 任何登录用户可见 (MVP)"""
+    u = _cookie_user(request)
+    if not u:
+        return RedirectResponse(url="/", status_code=302)
+    return FileResponse("static/admin.html")
+
+
+@app.get("/admin/api/stats")
+async def admin_api_stats(request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "未登录")
+    return {
+        "overview": db.stats_overview(),
+        "daily": db.daily_recordings(days=7),
+        "top_users": db.top_users_by_recordings(limit=10),
+        "trial_limit": TRIAL_LIMIT,
+    }
 
 
 if __name__ == "__main__":
