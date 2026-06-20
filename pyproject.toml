@@ -1,15 +1,12 @@
 [project]
-name = "qwen3-asr-flash-realtime"
+name = "voice-translate"
 version = "0.1.0"
-description = "Add your description here"
+description = "Real-time voice translation with OpenAI gpt-realtime-translate"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.136.1",
-    "httpx>=0.28.1",
-    "pyaudio>=0.2.14",
-    "uvicorn>=0.46.0",
-    "websocket-client>=1.9.0",
-    "websockets>=16.0",
-    "python-dotenv>=1.1.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "websocket-client>=1.8.0",
+    "python-dotenv>=1.0.0",
 ]

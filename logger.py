@@ -1,11 +1,11 @@
-"""统一日志格式 — 让 ./serve.sh logs 一眼看出谁在干什么
+"""Unified log format — readable in ./serve.sh logs
 
-格式: HH:MM:SS.mmm  Model-Tag       动作 内容
+Format: HH:MM:SS.mmm  Model-Tag       action content
 
-用法:
+Usage:
     from logger import log, ok, err
-    log("qwen-asr", "→ connect", "lang=zh")
-    ok("deepseek", f"← {result!r} ({elapsed:.0f}ms)")
+    log("openai", "→ connect", "target=ru")
+    ok("openai", f"← session ready ({elapsed:.0f}ms)")
     err("openai", "ws closed unexpectedly")
 """
 import sys
@@ -18,14 +18,11 @@ def _c(color, s):
     return f"\033[{_C[color]}m{s}\033[0m"
 
 
-# 模型标签 — 等宽 16 字符对齐
 TAGS = {
-    "qwen-asr":  _c("c", "Qwen3-ASR     ".ljust(14)),
-    "qwen-tts":  _c("m", "Qwen3-TTS     ".ljust(14)),
-    "deepseek":  _c("y", "DeepSeek-V4   ".ljust(14)),
     "openai":    _c("g", "OpenAI-RT-Tx  ".ljust(14)),
-    "router":    _c("gray", "Router        ".ljust(14)),
     "ws":        _c("gray", "WS-Server     ".ljust(14)),
+    "auth":      _c("c", "Auth          ".ljust(14)),
+    "room":      _c("m", "Room          ".ljust(14)),
 }
 
 

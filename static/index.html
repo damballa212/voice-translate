@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <title>实时转译</title>
+    <title>Traductor en Vivo</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&family=Caveat:wght@500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Caveat:wght@500;600&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -31,7 +31,7 @@
         --sans: "DM Sans", system-ui, sans-serif;
         --mono: "DM Mono", ui-monospace, monospace;
         --hand: "Caveat", cursive;
-        --cn: "Noto Sans SC", sans-serif;
+        --cn: sans-serif;
         /* Motion design tokens — 全局 duration + easing, 统一节奏 */
         --d-fast: 160ms;   /* 微交互, hover, press */
         --d-base: 240ms;   /* 标准 transition */
@@ -94,11 +94,6 @@
         }
         .head-title {
           font-size: 19px !important;
-        }
-        .engine-btn {
-          padding: 12px 10px !important;
-          font-size: 14px !important;
-          min-height: 44px;
         }
         .lang-tag {
           padding: 12px 14px !important;
@@ -458,53 +453,6 @@
         font-size: 16px;
       }
 
-      /* Engine bar — 国内外双引擎切换 (Notion 文档式 sliding underline) */
-      .engine-bar {
-        padding: 6px 22px 0;
-        display: flex;
-        gap: 0;
-        border-bottom: 1px solid var(--line);
-        flex-shrink: 0;
-        background: var(--paper);
-        position: relative;
-      }
-      .engine-btn {
-        padding: 10px 14px;
-        background: none;
-        border: none;
-        color: var(--dim);
-        font-family: inherit;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        margin-bottom: -1px;
-        position: relative;
-      }
-      .engine-btn:hover {
-        color: var(--ink);
-      }
-      .engine-btn.active {
-        color: var(--ink);
-        font-weight: 600;
-      }
-      .engine-underline {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        height: 2px;
-        background: var(--orange);
-        border-radius: 2px 2px 0 0;
-        pointer-events: none;
-        width: 0;
-        transition:
-          transform var(--d-base) var(--e-out),
-          width var(--d-base) var(--e-out),
-          opacity var(--d-fast) var(--e-out);
-        opacity: 0;
-      }
-      .engine-underline.visible {
-        opacity: 1;
-      }
 
       /* Lang bar — solo only */
       .lang-bar {
@@ -1541,74 +1489,6 @@
         transform: translateX(18px);
       }
 
-      /* Disabled engine button */
-      .engine-btn.disabled,
-      .engine-btn:disabled {
-        opacity: 0.35;
-        cursor: not-allowed;
-        pointer-events: none;
-      }
-
-      /* Network mask */
-      .net-mask {
-        position: fixed;
-        inset: 0;
-        z-index: 300;
-        background: rgba(43, 38, 32, 0.65);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-      }
-      .net-mask.show {
-        display: flex;
-      }
-      .net-mask .box {
-        background: var(--paper);
-        padding: 28px 32px;
-        border-radius: 20px;
-        text-align: center;
-        max-width: 320px;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
-      }
-      .net-mask h3 {
-        font-size: 17px;
-        font-weight: 700;
-        margin-bottom: 6px;
-        color: var(--ink);
-      }
-      .net-mask .desc {
-        font-size: 13px;
-        color: var(--ink-soft);
-        line-height: 1.55;
-      }
-      .net-mask .spinner {
-        width: 26px;
-        height: 26px;
-        border: 3px solid var(--line);
-        border-top-color: var(--orange);
-        border-radius: 50%;
-        animation: net-spin 1s linear infinite;
-        margin: 16px auto 0;
-      }
-      @keyframes net-spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      .net-mask .retry-btn {
-        margin-top: 16px;
-        padding: 10px 22px;
-        border: 1px solid var(--orange);
-        background: white;
-        color: var(--orange);
-        border-radius: 10px;
-        cursor: pointer;
-        font-family: inherit;
-        font-size: 13px;
-        font-weight: 600;
-      }
 
       /* Toast — spring bounce 入场, 上滑退场 */
       .toast {
@@ -1664,7 +1544,6 @@
          ============================================================ */
       .head-back,
       .head-act,
-      .engine-btn,
       .lang-tag,
       .lang-swap,
       .dock-act,
@@ -1680,7 +1559,6 @@
       }
       .head-back:active,
       .head-act:active,
-      .engine-btn:active:not(:disabled),
       .lang-tag:active,
       .lang-swap:active,
       .dock-act:active,
@@ -1987,7 +1865,7 @@
     <!-- Splash 启动屏 (JS 控制: 首次访问 1.2s, 二次访问立即移除) -->
     <div id="splash">
       <div class="logo">🎙</div>
-      <div class="title">实时翻译</div>
+      <div class="title">Traductor en Vivo</div>
       <div class="subtitle">Realtime Voice Translator</div>
       <div class="loader"></div>
     </div>
@@ -2005,7 +1883,7 @@
               line-height: 1.05;
             "
           >
-            实时 <span class="hand">转译</span>
+            Traductor <span class="hand">en Vivo</span>
           </h1>
           <div
             class="sub"
@@ -2016,7 +1894,7 @@
               font-weight: 500;
             "
           >
-            登录以保存录音记录
+            Inicia sesión para guardar grabaciones
           </div>
         </div>
         <div
@@ -2044,7 +1922,7 @@
               data-tab="login"
               onclick="switchAuthTab('login')"
             >
-              登录
+              Iniciar sesión
             </button>
             <button
               type="button"
@@ -2052,15 +1930,15 @@
               data-tab="register"
               onclick="switchAuthTab('register')"
             >
-              注册
+              Registrarse
             </button>
             <div class="auth-tab-underline"></div>
           </div>
 
-          <!-- 登录表单 -->
+          <!-- Login form -->
           <div id="authLoginPane">
             <div class="form-group">
-              <label>邮箱</label>
+              <label>Correo</label>
               <input
                 type="email"
                 id="loginEmail"
@@ -2070,24 +1948,24 @@
               />
             </div>
             <div class="form-group">
-              <label>密码</label>
+              <label>Contraseña</label>
               <input
                 type="password"
                 id="loginPwd"
-                placeholder="请输入密码"
+                placeholder="Introduce tu contraseña"
                 autocomplete="current-password"
                 onkeydown="if (event.key === 'Enter') doLogin();"
               />
             </div>
             <button class="primary auth-submit" onclick="doLogin()">
-              登录
+              Iniciar sesión
             </button>
           </div>
 
-          <!-- 注册表单 -->
+          <!-- Register form -->
           <div id="authRegisterPane" style="display: none">
             <div class="form-group">
-              <label>邮箱</label>
+              <label>Correo</label>
               <input
                 type="email"
                 id="regEmail"
@@ -2097,27 +1975,27 @@
               />
             </div>
             <div class="form-group">
-              <label>昵称</label>
+              <label>Apodo</label>
               <input
                 type="text"
                 id="regNick"
-                placeholder="留空将使用邮箱前缀"
+                placeholder="Dejar vacío usará el prefijo del correo"
                 maxlength="20"
                 onkeydown="if (event.key === 'Enter') doRegister();"
               />
             </div>
             <div class="form-group">
-              <label>密码 (≥ 6 位)</label>
+              <label>Contraseña (≥ 6 caracteres)</label>
               <input
                 type="password"
                 id="regPwd"
-                placeholder="设置一个密码"
+                placeholder="Establece una contraseña"
                 autocomplete="new-password"
                 onkeydown="if (event.key === 'Enter') doRegister();"
               />
             </div>
             <button class="primary auth-submit" onclick="doRegister()">
-              注册并登录
+              Registrarse e iniciar sesión
             </button>
           </div>
         </div>
@@ -2128,37 +2006,37 @@
        ============================================================ -->
       <div class="view landing" id="viewLanding">
         <div class="hero">
-          <h1>实时 <span class="hand">转译</span></h1>
-          <div class="sub">让<b>每个声音</b>都被听懂 · 单人 / 群组实时翻译</div>
+          <h1>Traductor <span class="hand">en Vivo</span></h1>
+          <div class="sub">Que <b>cada voz</b> sea comprendida · Traducción individual / grupal en tiempo real</div>
         </div>
         <div class="cards">
           <button class="card solo" onclick="enterSolo()">
             <div class="ic">🎙</div>
             <div class="body">
-              <div class="ttl">单人翻译</div>
-              <div class="desc">一个人,跨语言对话</div>
+              <div class="ttl">Traducción individual</div>
+              <div class="desc">Conversación en otro idioma</div>
             </div>
             <div class="arr">→</div>
           </button>
           <button class="card create" onclick="openCreateRoom()">
             <div class="ic">＋</div>
             <div class="body">
-              <div class="ttl">创建会议</div>
-              <div class="desc">起一个房间,邀请别人加入</div>
+              <div class="ttl">Crear sala</div>
+              <div class="desc">Crea una sala e invita a otros</div>
             </div>
             <div class="arr">→</div>
           </button>
           <button class="card join" onclick="openJoinRoom()">
             <div class="ic">⌬</div>
             <div class="body">
-              <div class="ttl">加入会议</div>
-              <div class="desc">输入邀请码,加入正在进行的会议</div>
+              <div class="ttl">Unirse a sala</div>
+              <div class="desc">Ingresa el código de invitación</div>
             </div>
             <div class="arr">→</div>
           </button>
         </div>
         <div class="footer">
-          REALTIME TRANSLATOR · v0.4 · OPENAI · DASHSCOPE · DEEPSEEK
+          VOICE TRANSLATE · v1.0 · OPENAI
         </div>
       </div>
 
@@ -2169,35 +2047,12 @@
         <div class="head">
           <button class="head-back" onclick="backToLanding()">‹</button>
           <div class="head-info">
-            <div class="head-title"><span class="emoji">🎙</span>单人翻译</div>
+            <div class="head-title"><span class="emoji">🎙</span>Traducción individual</div>
             <div class="head-meta" id="soloMeta">
-              <span class="live-dot"></span>就绪
+              <span class="live-dot"></span>Listo
             </div>
           </div>
           <button class="head-act" onclick="openSettings()">⚙</button>
-        </div>
-
-        <div class="engine-bar" id="engineSolo">
-          <button
-            class="engine-btn active"
-            data-engine="dashscope"
-            onclick="selectEngine('dashscope')"
-          >
-            Qwen+DP4
-            <span style="font-size: 10px; color: var(--dim); font-weight: 400"
-              >·国内</span
-            >
-          </button>
-          <button
-            class="engine-btn"
-            data-engine="openai"
-            onclick="selectEngine('openai')"
-          >
-            ⚡ OpenAI
-            <span style="font-size: 10px; color: var(--dim); font-weight: 400"
-              >·国外</span
-            >
-          </button>
         </div>
 
         <div class="lang-bar">
@@ -2207,13 +2062,13 @@
             onclick="openLangPicker('src')"
           >
             <span class="flag" id="srcFlag">🌐</span>
-            <span id="srcLabel">自动检测</span>
+            <span id="srcLabel">Detectar idioma</span>
             <span style="color: var(--dim); font-size: 11px">▾</span>
           </div>
           <button class="lang-swap" onclick="swapLangs()">⇄</button>
           <div class="lang-tag" id="tgtLang" onclick="openLangPicker('tgt')">
             <span class="flag" id="tgtFlag">🇨🇳</span>
-            <span id="tgtLabel">中文</span>
+            <span id="tgtLabel">Ruso</span>
             <span style="color: var(--dim); font-size: 11px">▾</span>
           </div>
         </div>
@@ -2221,7 +2076,7 @@
         <div class="transcript" id="soloTranscript">
           <div class="empty-state" id="soloEmpty">
             <div class="big">🎙</div>
-            点下方麦克风开始<br />说出任意语言,实时转译
+            Pulsa el micrófono abajo<br />Habla en cualquier idioma, traducción en vivo
           </div>
           <div
             class="subtitle-text"
@@ -2240,17 +2095,17 @@
             </svg>
           </button>
           <div class="mic-info">
-            <div class="ttl" id="micSoloTitle">点击开始</div>
-            <div class="meta" id="micSoloMeta">就绪</div>
+            <div class="ttl" id="micSoloTitle">Pulsa para empezar</div>
+            <div class="meta" id="micSoloMeta">Listo</div>
           </div>
           <button
             class="dock-act"
             onclick="downloadCurrent()"
-            title="下载本次记录"
+            title="Descargar grabación"
           >
             ↓
           </button>
-          <button class="dock-act" onclick="openHistory()" title="历史记录">
+          <button class="dock-act" onclick="openHistory()" title="Grabaciones">
             📜
           </button>
         </div>
@@ -2264,15 +2119,15 @@
           <button class="head-back" onclick="leaveRoom()">‹</button>
           <div class="head-info">
             <div class="head-title">
-              <span class="emoji">📓</span><span id="roomName">会议</span>
+              <span class="emoji">📓</span><span id="roomName">Sala</span>
             </div>
             <div class="head-meta" id="roomMeta">
               <span class="live-dot"></span>
-              <span id="roomMembersCount">0</span> 人 ·
+              <span id="roomMembersCount">0</span> ·
               <span class="code" id="roomCode" onclick="copyRoomCode()"
                 >XXXXXX</span
               >
-              · 我听 <b id="roomMyTarget">中文</b>
+              · Escucho <b id="roomMyTarget">Ruso</b>
             </div>
           </div>
           <button class="head-act" onclick="openSettings()">⚙</button>
@@ -2280,33 +2135,10 @@
 
         <div class="members" id="roomMembers"></div>
 
-        <div class="engine-bar" id="engineRoom">
-          <button
-            class="engine-btn active"
-            data-engine="dashscope"
-            onclick="selectEngine('dashscope')"
-          >
-            Qwen+DP4
-            <span style="font-size: 10px; color: var(--dim); font-weight: 400"
-              >·国内</span
-            >
-          </button>
-          <button
-            class="engine-btn"
-            data-engine="openai"
-            onclick="selectEngine('openai')"
-          >
-            ⚡ OpenAI
-            <span style="font-size: 10px; color: var(--dim); font-weight: 400"
-              >·国外</span
-            >
-          </button>
-        </div>
-
         <div class="stream" id="roomStream">
           <div class="empty-state">
             <div class="big">💬</div>
-            会议已就绪<br />点麦克风开始发言
+            Sala lista<br />Pulsa el micrófono para hablar
           </div>
         </div>
 
@@ -2320,13 +2152,13 @@
             </svg>
           </button>
           <div class="mic-info">
-            <div class="ttl" id="micRoomTitle">点击发言</div>
-            <div class="meta" id="micRoomMeta">就绪</div>
+            <div class="ttl" id="micRoomTitle">Pulsa para hablar</div>
+            <div class="meta" id="micRoomMeta">Listo</div>
           </div>
-          <button class="dock-act" onclick="copyTranscript()" title="复制全部">
+          <button class="dock-act" onclick="copyTranscript()" title="Copiar todo">
             📋
           </button>
-          <button class="dock-act" onclick="exportRoom()" title="导出 Markdown">
+          <button class="dock-act" onclick="exportRoom()" title="Exportar Markdown">
             ↓
           </button>
         </div>
@@ -2343,17 +2175,17 @@
     >
       <div class="panel" id="panelSettings" style="display: none">
         <div class="grip"></div>
-        <h3>设置</h3>
+        <h3>Ajustes</h3>
         <div class="form-group">
-          <label>识别语言</label>
+          <label>Idioma de entrada</label>
           <select id="setAsrLang"></select>
         </div>
         <div class="form-group">
-          <label>翻译目标</label>
+          <label>Traducir a</label>
           <select id="setTargetLang"></select>
         </div>
         <div class="toggle-row">
-          <span>开启翻译</span>
+          <span>Activar traducción</span>
           <div
             class="toggle on"
             id="toggleTranslate"
@@ -2364,7 +2196,7 @@
           ></div>
         </div>
         <div class="toggle-row">
-          <span>语音朗读 (TTS)</span>
+          <span>Voz (TTS)</span>
           <div
             class="toggle"
             id="toggleTts"
@@ -2374,44 +2206,40 @@
             "
           ></div>
         </div>
-        <div class="form-group" id="voiceGroup" style="display: none">
-          <label>TTS 音色</label>
-          <select id="setVoice"></select>
-        </div>
       </div>
 
       <!-- Create Room panel -->
       <div class="panel" id="panelCreate" style="display: none">
         <div class="grip"></div>
-        <h3>创建会议</h3>
+        <h3>Crear sala</h3>
         <div class="form-group">
-          <label>会议名称</label>
-          <input type="text" id="createName" placeholder="例如: Q3 季度规划" />
+          <label>Nombre de la sala</label>
+          <input type="text" id="createName" placeholder="Ej: Reunión semanal" />
         </div>
         <div class="form-group">
-          <label>您的昵称</label>
+          <label>Tu apodo</label>
           <input
             type="text"
             id="createNick"
-            placeholder="您的名字"
+            placeholder="Tu nombre"
             maxlength="20"
           />
         </div>
         <div class="form-group">
-          <label>您听的语言</label>
+          <label>Idioma que escuchas</label>
           <select id="createTarget"></select>
         </div>
-        <button class="primary" onclick="doCreateRoom()">创建</button>
+        <button class="primary" onclick="doCreateRoom()">Crear</button>
       </div>
 
       <!-- Lang picker panel -->
       <div class="panel" id="panelLang" style="display: none">
         <div class="grip"></div>
-        <h3 id="langPickerTitle">选择语言</h3>
+        <h3 id="langPickerTitle">Seleccionar idioma</h3>
         <input
           type="text"
           id="langSearchInput"
-          placeholder="搜索语言..."
+          placeholder="Buscar idioma..."
           style="
             width: 100%;
             padding: 11px 14px;
@@ -2432,20 +2260,20 @@
       <!-- History panel -->
       <div class="panel" id="panelHistory" style="display: none">
         <div class="grip"></div>
-        <h3>📜 历史记录</h3>
-        <div id="historyList"><div class="record-empty">加载中…</div></div>
+        <h3>📜 Grabaciones</h3>
+        <div id="historyList"><div class="record-empty">Cargando…</div></div>
       </div>
 
       <!-- Join Room panel -->
       <div class="panel" id="panelJoin" style="display: none">
         <div class="grip"></div>
-        <h3>加入会议</h3>
+        <h3>Unirse a sala</h3>
         <div class="form-group">
-          <label>邀请码</label>
+          <label>Código</label>
           <input
             type="text"
             id="joinCode"
-            placeholder="6 位码,如 Q3PLAN"
+            placeholder="Código de 6 caracteres"
             maxlength="8"
             style="
               text-transform: uppercase;
@@ -2456,19 +2284,19 @@
           />
         </div>
         <div class="form-group">
-          <label>您的昵称</label>
+          <label>Tu apodo</label>
           <input
             type="text"
             id="joinNick"
-            placeholder="您的名字"
+            placeholder="Tu nombre"
             maxlength="20"
           />
         </div>
         <div class="form-group">
-          <label>您听的语言</label>
+          <label>Idioma que escuchas</label>
           <select id="joinTarget"></select>
         </div>
-        <button class="primary" onclick="doJoinRoom()">加入</button>
+        <button class="primary" onclick="doJoinRoom()">Unirse</button>
       </div>
     </div>
 
@@ -2476,12 +2304,12 @@
     <div id="trialModal" role="dialog" aria-labelledby="trialTitle">
       <div class="card">
         <div class="icon">⏰</div>
-        <h2 id="trialTitle">试用次数已用完</h2>
+        <h2 id="trialTitle">Prueba gratuita agotada</h2>
         <div class="desc">
-          感谢你试用实时转译<br />
-          这是一个 <strong style="color: var(--ink)">开源项目</strong>,你可以自部署一份,自由使用,完全免费
+          Gracias por probar el Traductor en Vivo<br />
+          Este es un <strong style="color: var(--ink)">proyecto open source</strong>, puedes desplegarlo por tu cuenta, completamente gratis
         </div>
-        <div class="count" id="trialCount">3 / 3 已使用</div>
+        <div class="count" id="trialCount">3 / 3 usados</div>
         <a
           class="github-cta"
           href="https://github.com/Timelk/realtime-translate"
@@ -2495,15 +2323,15 @@
             />
           </svg>
           <div class="github-cta-text">
-            <div class="t">在 GitHub 自部署</div>
-            <div class="s">Timelk/realtime-translate · MIT · 一行 Docker 起</div>
+            <div class="t">Desplegar en GitHub</div>
+            <div class="s">Timelk/realtime-translate · MIT · Docker</div>
           </div>
           <div class="github-cta-arrow">→</div>
         </a>
         <div class="actions">
-          <button class="ghost" onclick="closeTrialModal()">我知道了</button>
+          <button class="ghost" onclick="closeTrialModal()">Entendido</button>
           <button class="primary" onclick="closeTrialModal(); openHistory();">
-            查看记录
+            Ver grabaciones
           </button>
         </div>
       </div>
@@ -2512,25 +2340,9 @@
     <div class="toast" id="toast"></div>
     <div id="busyBanner">
       <span class="spin"></span
-      ><span id="busyBannerText">正在连接,请稍候…</span>
+      ><span id="busyBannerText">Conectando, espera...</span>
     </div>
 
-    <!-- Network reachability mask -->
-    <div class="net-mask" id="netMask">
-      <div class="box">
-        <h3>⚠️ 网络检测</h3>
-        <div class="desc" id="netMaskDesc">正在检测网络…</div>
-        <div class="spinner" id="netSpinner"></div>
-        <button
-          class="retry-btn"
-          id="netRetry"
-          onclick="checkNetwork()"
-          style="display: none"
-        >
-          重试
-        </button>
-      </div>
-    </div>
 
     <script>
       // ============================================================
@@ -2588,195 +2400,194 @@
 
       const config = {
         lang: "auto",
-        target: "zh",
+        target: "ru",
         translate: true,
         tts: false,
         voice: "Cherry",
-        engine: "dashscope",
+        engine: "openai",
       };
 
-      // Qwen ASR 支持 26 种 (含 auto), 目标语言 DeepSeek 不限
-      // OpenAI 目标语言 13 种 (子集), 标 openai: true 的可走 OpenAI 直译
-      // label = 中文名 (UI 显示)  alias = 原文/英文 (搜索用)
+      // OpenAI supported languages
+      // label = Spanish name (UI display)  alias = English/native (search)
       const COMMON_LANGS = [
         {
           id: "auto",
-          label: "自动检测",
+          label: "Detectar idioma",
           alias: "auto detect",
           flag: "🌐",
           openai: false,
         },
         {
           id: "zh",
-          label: "中文",
+          label: "Chino",
           alias: "chinese zh",
           flag: "🇨🇳",
           openai: true,
         },
         {
           id: "en",
-          label: "英语",
+          label: "Inglés",
           alias: "english en",
           flag: "🇬🇧",
           openai: true,
         },
         {
           id: "ja",
-          label: "日语",
+          label: "Japonés",
           alias: "japanese ja 日本語",
           flag: "🇯🇵",
           openai: true,
         },
         {
           id: "ko",
-          label: "韩语",
+          label: "Coreano",
           alias: "korean ko 한국어",
           flag: "🇰🇷",
           openai: true,
         },
         {
           id: "es",
-          label: "西班牙语",
+          label: "Español",
           alias: "spanish es español",
           flag: "🇪🇸",
           openai: true,
         },
         {
           id: "fr",
-          label: "法语",
+          label: "Francés",
           alias: "french fr français",
           flag: "🇫🇷",
           openai: true,
         },
         {
           id: "de",
-          label: "德语",
+          label: "Alemán",
           alias: "german de deutsch",
           flag: "🇩🇪",
           openai: true,
         },
         {
           id: "it",
-          label: "意大利语",
+          label: "Italiano",
           alias: "italian it italiano",
           flag: "🇮🇹",
           openai: true,
         },
         {
           id: "pt",
-          label: "葡萄牙语",
+          label: "Portugués",
           alias: "portuguese pt português",
           flag: "🇧🇷",
           openai: true,
         },
         {
           id: "ru",
-          label: "俄语",
+          label: "Ruso",
           alias: "russian ru русский",
           flag: "🇷🇺",
           openai: true,
         },
         {
           id: "ar",
-          label: "阿拉伯语",
+          label: "Árabe",
           alias: "arabic ar العربية",
           flag: "🇸🇦",
           openai: true,
         },
         {
           id: "hi",
-          label: "印地语",
+          label: "Hindi",
           alias: "hindi hi हिन्दी",
           flag: "🇮🇳",
           openai: true,
         },
         {
           id: "id",
-          label: "印尼语",
+          label: "Indonesio",
           alias: "indonesian id bahasa",
           flag: "🇮🇩",
           openai: true,
         },
         {
           id: "th",
-          label: "泰语",
+          label: "Tailandés",
           alias: "thai th ไทย",
           flag: "🇹🇭",
           openai: false,
         },
         {
           id: "tr",
-          label: "土耳其语",
+          label: "Turco",
           alias: "turkish tr türkçe",
           flag: "🇹🇷",
           openai: false,
         },
         {
           id: "vi",
-          label: "越南语",
+          label: "Vietnamita",
           alias: "vietnamese vi tiếng việt",
           flag: "🇻🇳",
           openai: false,
         },
         {
           id: "nl",
-          label: "荷兰语",
+          label: "Neerlandés",
           alias: "dutch nl nederlands",
           flag: "🇳🇱",
           openai: false,
         },
         {
           id: "sv",
-          label: "瑞典语",
+          label: "Sueco",
           alias: "swedish sv svenska",
           flag: "🇸🇪",
           openai: false,
         },
         {
           id: "da",
-          label: "丹麦语",
+          label: "Danés",
           alias: "danish da dansk",
           flag: "🇩🇰",
           openai: false,
         },
         {
           id: "fi",
-          label: "芬兰语",
+          label: "Finlandés",
           alias: "finnish fi suomi",
           flag: "🇫🇮",
           openai: false,
         },
         {
           id: "pl",
-          label: "波兰语",
+          label: "Polaco",
           alias: "polish pl polski",
           flag: "🇵🇱",
           openai: false,
         },
         {
           id: "cs",
-          label: "捷克语",
+          label: "Checo",
           alias: "czech cs čeština",
           flag: "🇨🇿",
           openai: false,
         },
         {
           id: "fil",
-          label: "菲律宾语",
+          label: "Filipino",
           alias: "filipino fil tagalog",
           flag: "🇵🇭",
           openai: false,
         },
         {
           id: "ms",
-          label: "马来语",
+          label: "Malayo",
           alias: "malay ms bahasa melayu",
           flag: "🇲🇾",
           openai: false,
         },
         {
           id: "no",
-          label: "挪威语",
+          label: "Noruego",
           alias: "norwegian no norsk",
           flag: "🇳🇴",
           openai: false,
@@ -2798,18 +2609,15 @@
           setTimeout(() => prev.classList.remove("exiting"), 150);
           setTimeout(() => {
             next.classList.add("active");
-            // view 切换后, 新 view 的 engine bar 需要重算 underline
-            setTimeout(syncEngineUnderline, 200);
           }, 90);
         } else {
           next.classList.add("active");
-          setTimeout(syncEngineUnderline, 200);
         }
         currentView = viewId;
       }
 
       function backToLanding() {
-        if (recording) stopMic("已退出");
+        if (recording) stopMic("Sesión cerrada");
         if (mode === "room") {
           if (ws && ws.readyState === WebSocket.OPEN)
             ws.send(JSON.stringify({ command: "leave_room" }));
@@ -2823,7 +2631,6 @@
       function enterSolo() {
         mode = "solo";
         show("viewSolo");
-        syncEngineUI();
         updateLangDisplay();
       }
 
@@ -2840,7 +2647,7 @@
         ws.onopen = () => console.log("[ws] open");
         ws.onclose = () => {
           console.log("[ws] close, reconnect in 2s");
-          if (recording) stopMic("连接断开");
+          if (recording) stopMic("Conexión perdida");
           setTimeout(connectWs, 2000);
         };
         ws.onerror = (e) => console.error("[ws] error", e);
@@ -2864,10 +2671,7 @@
             if (m.recording_id) currentRecordingId = m.recording_id;
             break;
           case "ready": {
-            const eng =
-              m.engine === "openai"
-                ? "⚡ OpenAI 直译 (国外)"
-                : "🔁 Qwen+DeepSeek (国内)";
+            const eng = "⚡ OpenAI";
             onBackendReady(eng);
             if (m.recording_id) currentRecordingId = m.recording_id;
             break;
@@ -2882,18 +2686,18 @@
             playAudio(m.data, m.sample_rate);
             break;
           case "stopped":
-            setMicTitle("已停止");
+            setMicTitle("Detenido");
             break;
           case "config_updated":
             // server confirms; no UI change needed
             break;
           case "error":
             if (m.code === "trial_limit") {
-              if (recording) stopMic("试用次数已用完");
+              if (recording) stopMic("Prueba gratuita agotada");
               showTrialModal(m.used, m.limit);
             } else {
-              toast(m.message || "错误");
-              if (recording) stopMic("错误");
+              toast(m.message || "Error");
+              if (recording) stopMic("Error");
             }
             break;
           case "room_joined":
@@ -2915,7 +2719,7 @@
             onSpeakingState(m);
             break;
           case "room_closed":
-            toast("会议已结束");
+            toast("La sala ha terminado");
             backToLanding();
             break;
         }
@@ -3074,7 +2878,7 @@
               cur.appendChild(span);
             });
           } else {
-            // 文本不连续 → 整体替换 (DashScope 整句到达 / src→tgt 切换)
+            // Non-contiguous text → full replace (src→tgt switch)
             // 整段一次到位 → 逐字 stagger 浮出 (反正不是流式, 用户在乎"出现感")
             cur.innerHTML = "";
             Array.from(currentText).forEach((ch, i) => {
@@ -3149,7 +2953,7 @@
 
       function downloadCurrent() {
         if (!currentRecordingId) {
-          toast("当前会话还没记录, 先说几句");
+          toast("No hay grabaciones");
           return;
         }
         window.open("/recordings/" + currentRecordingId + ".md", "_blank");
@@ -3176,7 +2980,7 @@
           const r = await fetch("/recordings");
           const items = await r.json();
           if (!items.length) {
-            list.innerHTML = '<div class="record-empty">还没有记录</div>';
+            list.innerHTML = '<div class="record-empty">No hay grabaciones</div>';
             return;
           }
           list.innerHTML = items
@@ -3188,25 +2992,25 @@
               return `<div class="record-item">
         <div class="record-info">
           <div class="record-name">${icon} ${name}</div>
-          <div class="record-meta">${dateStr} · ${it.count} 条</div>
+          <div class="record-meta">${dateStr} · ${it.count} entradas</div>
         </div>
-        <a class="record-dl" href="/recordings/${it.id}.md" download title="下载">↓</a>
-        <button class="record-del" onclick="deleteRecording('${it.id}')" title="删除">×</button>
+        <a class="record-dl" href="/recordings/${it.id}.md" download title="Descargar">↓</a>
+        <button class="record-del" onclick="deleteRecording('${it.id}')" title="Eliminar">×</button>
       </div>`;
             })
             .join("");
         } catch (e) {
-          list.innerHTML = '<div class="record-empty">加载失败</div>';
+          list.innerHTML = '<div class="record-empty">Error al cargar</div>';
         }
       }
 
       async function deleteRecording(id) {
-        if (!confirm("删除这条记录?")) return;
+        if (!confirm("¿Eliminar esta grabación?")) return;
         try {
           await fetch("/recordings/" + id, { method: "DELETE" });
           openHistory();
         } catch (e) {
-          toast("删除失败");
+          toast("Error al eliminar");
         }
       }
 
@@ -3229,10 +3033,10 @@
       function onRoomJoined(m) {
         roomState = {
           code: m.code,
-          name: m.room_name || "会议",
+          name: m.room_name || "Sala",
           members: m.members,
           you: m.you,
-          myTarget: m.your_target || "zh",
+          myTarget: m.your_target || "ru",
         };
         document.getElementById("roomName").textContent = roomState.name;
         document.getElementById("roomCode").textContent = m.code;
@@ -3242,18 +3046,17 @@
           : roomState.myTarget;
         renderMembers();
         document.getElementById("roomStream").innerHTML =
-          '<div class="empty-state"><div class="big">💬</div>会议已就绪<br>点麦克风开始发言</div>';
+          '<div class="empty-state"><div class="big">💬</div>Sala lista<br>Pulsa el micrófono para hablar</div>';
         mode = "room";
         show("viewRoom");
-        syncEngineUI();
-        toast(`已加入 · 邀请码 ${m.code}`);
+        toast(`Conectado · Código ${m.code}`);
       }
 
       function onMemberJoined(m) {
         if (!roomState) return;
         roomState.members.push(m.member);
         renderMembers();
-        toast(`${m.member.name} 加入了`);
+        toast(`${m.member.name} se unió`);
       }
 
       function onMemberLeft(m) {
@@ -3261,7 +3064,7 @@
         const left = roomState.members.find((x) => x.id === m.id);
         roomState.members = roomState.members.filter((x) => x.id !== m.id);
         renderMembers();
-        if (left) toast(`${left.name} 离开了`);
+        if (left) toast(`${left.name} salió`);
       }
 
       function onSpeakingState(m) {
@@ -3282,12 +3085,12 @@
           const cls = m.id === roomState.you ? "me" : "c" + (m.color ?? 0);
           const initial =
             m.id === roomState.you
-              ? "我"
+              ? "Yo"
               : (m.name || "?").charAt(0).toUpperCase();
           html += `<div class="av ${cls}" data-member="${m.id}" title="${m.name}">${initial}</div>`;
         }
         html += `<span class="who" id="memberWho">${roomState.members.map((x) => x.name).join(" · ")}</span>`;
-        html += `<button class="invite" onclick="copyRoomCode()">+ 邀请</button>`;
+        html += `<button class="invite" onclick="copyRoomCode()">+ Invitar</button>`;
         el.innerHTML = html;
       }
 
@@ -3295,7 +3098,7 @@
         if (!roomState) return;
         const url = `${location.origin}/?room=${roomState.code}`;
         navigator.clipboard?.writeText(roomState.code).catch(() => {});
-        toast(`邀请码 ${roomState.code} 已复制`);
+        toast(`Código ${roomState.code} copiado`);
       }
 
       function onRoomMessage(m) {
@@ -3303,7 +3106,7 @@
         let turn = document.getElementById("turn-" + m.turn_id);
         if (!turn) turn = createTurn(m);
         const srcEl = turn.querySelector(".src-text");
-        // incremental=true (OpenAI delta): 累积; final=true 或默认: 整段替换 (DashScope 完整句)
+        // incremental=true (OpenAI delta): accumulate; final=true: full replace
         if (m.incremental) srcEl.textContent = srcEl.textContent + m.text;
         else srcEl.textContent = m.text;
         // final 移除 cursor (turn 完成)
@@ -3354,169 +3157,6 @@
         return turn;
       }
 
-      // ============================================================
-      // Engine select (与 selectEngine 共用)
-      // ============================================================
-      // ============================================================
-      // 网络可达性预检
-      // ============================================================
-      let networkState = { intl: null, cn: null }; // null=未测, true/false=结果
-
-      async function _probe(url, timeoutMs = 4000) {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-        try {
-          await fetch(url, {
-            mode: "no-cors",
-            cache: "no-cache",
-            signal: ctrl.signal,
-          });
-          return true;
-        } catch {
-          return false;
-        } finally {
-          clearTimeout(timer);
-        }
-      }
-
-      async function checkNetwork() {
-        document.getElementById("netSpinner").style.display = "block";
-        document.getElementById("netRetry").style.display = "none";
-        document.getElementById("netMaskDesc").textContent =
-          "正在检测国内/国外网络…";
-        document.getElementById("netMask").classList.add("show");
-        const [intl, cn] = await Promise.all([
-          _probe("https://www.gstatic.com/generate_204"),
-          _probe("https://www.baidu.com/favicon.ico"),
-        ]);
-        networkState = { intl, cn };
-        applyNetworkState();
-      }
-
-      function applyNetworkState() {
-        const { intl, cn } = networkState;
-        const mask = document.getElementById("netMask");
-        if (!intl && !cn) {
-          document.getElementById("netSpinner").style.display = "none";
-          document.getElementById("netRetry").style.display = "inline-block";
-          document.getElementById("netMaskDesc").innerHTML =
-            "国内 (baidu) 和国外 (google) 都不可达<br>请检查网络后重试";
-          mask.classList.add("show");
-          return;
-        }
-        mask.classList.remove("show");
-        // 给 engine button 标 disabled (当前网络不可达时禁用对应引擎)
-        document
-          .querySelectorAll('.engine-btn[data-engine="openai"]')
-          .forEach((b) => {
-            b.disabled = !intl;
-            b.classList.toggle("disabled", !intl);
-            b.title = intl ? "" : "国外网络不可达 (google.com 探测失败)";
-          });
-        document
-          .querySelectorAll('.engine-btn[data-engine="dashscope"]')
-          .forEach((b) => {
-            b.disabled = !cn;
-            b.classList.toggle("disabled", !cn);
-            b.title = cn ? "" : "国内网络不可达 (baidu.com 探测失败)";
-          });
-        // 当前 engine 如果不可达 → 切到可达的
-        if (config.engine === "openai" && !intl && cn) {
-          config.engine = "dashscope";
-          toast("国外网络不通,已切到 Qwen+DP4");
-        } else if (config.engine === "dashscope" && !cn && intl) {
-          config.engine = "openai";
-          toast("国内网络不通,已切到 OpenAI");
-        }
-        syncEngineUI();
-      }
-
-      function selectEngine(eng) {
-        if (eng === "openai" && networkState.intl === false) {
-          toast("国外网络不可达, 无法使用 OpenAI");
-          return;
-        }
-        if (eng === "dashscope" && networkState.cn === false) {
-          toast("国内网络不可达, 无法使用 Qwen+DP4");
-          return;
-        }
-        config.engine = eng;
-        syncEngineUI();
-        pushConfig();
-        if (eng === "openai") {
-          const t = COMMON_LANGS.find((l) => l.id === config.target);
-          if (t && !t.openai) {
-            // 当前 target 不在 OpenAI 13 种内 → 自动切到中文 + 明确告知
-            const prev = t.label;
-            config.target = "zh";
-            updateLangDisplay();
-            pushConfig();
-            toast(`OpenAI 不支持"${prev}",已自动切到中文。点上方语言气泡可改`);
-          } else {
-            checkOpenAILangPair();
-          }
-        }
-        if (recording) {
-          stopMic("切换中…");
-          showBusyBanner("正在切换引擎,请稍候…");
-          document
-            .querySelectorAll(".mic")
-            .forEach((b) => b.classList.add("connecting"));
-          setMicTitle("⏳ 切换引擎中,请等待…", true);
-          setTimeout(toggleMic, 400);
-        }
-      }
-
-      function checkOpenAILangPair() {
-        if (config.engine !== "openai") return;
-        // 中文用户默认场景: target=zh 同时说中文 → OpenAI 不翻译
-        if (config.target === "zh") {
-          toast(
-            "OpenAI 直译: 目标=中文 时如果你也说中文将不翻译, 请点击右上语言气泡切换目标",
-          );
-        } else if (config.lang !== "auto" && config.lang === config.target) {
-          toast("源 = 目标语言, OpenAI 直译会跳过翻译, 请改其中一个");
-        }
-      }
-
-      function syncEngineUI() {
-        document.querySelectorAll(".engine-btn").forEach((b) => {
-          b.classList.toggle("active", b.dataset.engine === config.engine);
-        });
-        const lbl =
-          config.engine === "openai" ? "⚡ OpenAI (国外)" : "🔁 Qwen+DP4 (国内)";
-        const m = document.getElementById("micSoloMeta");
-        if (m) m.innerHTML = `引擎: <b>${lbl}</b>`;
-        const r = document.getElementById("micRoomMeta");
-        if (r) r.innerHTML = `<b>${lbl}</b>`;
-        requestAnimationFrame(syncEngineUnderline);
-      }
-
-      function syncEngineUnderline() {
-        document.querySelectorAll(".engine-bar").forEach((bar) => {
-          let underline = bar.querySelector(".engine-underline");
-          if (!underline) {
-            underline = document.createElement("div");
-            underline.className = "engine-underline";
-            bar.appendChild(underline);
-          }
-          const active = bar.querySelector(".engine-btn.active");
-          if (!active) {
-            underline.classList.remove("visible");
-            return;
-          }
-          const barRect = bar.getBoundingClientRect();
-          const r = active.getBoundingClientRect();
-          if (r.width === 0) return; // 元素还没 layout (view 切换中)
-          underline.style.width = r.width + "px";
-          underline.style.transform = `translateX(${r.left - barRect.left}px)`;
-          underline.classList.add("visible");
-        });
-      }
-      // resize / view 切换 都要重算 underline
-      window.addEventListener("resize", () =>
-        requestAnimationFrame(syncEngineUnderline),
-      );
 
       // ============================================================
       // Lang cycling (顶部 lang chip)
@@ -3526,7 +3166,7 @@
       function openLangPicker(which) {
         _langPickerWhich = which;
         document.getElementById("langPickerTitle").textContent =
-          which === "src" ? "🎤 识别语言 (源)" : "🌐 翻译目标";
+          which === "src" ? "🎤 Idioma de entrada" : "🌐 Traducir a";
         document.getElementById("langSearchInput").value = "";
         renderLangList();
         showPanel("panelLang");
@@ -3557,13 +3197,10 @@
             return false;
           return true;
         }).length;
-        const engineLabel =
-          { openai: "⚡ OpenAI (国外)", dashscope: "🔁 Qwen+DP4 (国内)" }[
-            config.engine
-          ] || config.engine;
+        const engineLabel = "⚡ OpenAI";
         document.getElementById("langPickerTitle").innerHTML =
-          (which === "src" ? "🎤 识别语言" : "🌐 翻译目标") +
-          ` <span style="font-family:var(--mono);font-size:11px;color:var(--dim);font-weight:400">${engineLabel} · ${totalForEngine} 种</span>`;
+          (which === "src" ? "🎤 Idioma de entrada" : "🌐 Traducir a") +
+          ` <span style="font-family:var(--mono);font-size:11px;color:var(--dim);font-weight:400">${engineLabel} · ${totalForEngine}</span>`;
         const html = items
           .map((l) => {
             const isCur = l.id === current;
@@ -3573,7 +3210,7 @@
       <span style="font-size:22px">${l.flag}</span>
       <div style="flex:1;min-width:0">
         <div style="font-weight:${isCur ? 700 : 500};font-size:14px;color:var(--ink)">${l.label}</div>
-        ${showFastBadge ? '<div style="font-family:var(--mono);font-size:10px;color:var(--orange);margin-top:2px">⚡ OpenAI 直译可用</div>' : ""}
+        ${showFastBadge ? '<div style="font-family:var(--mono);font-size:10px;color:var(--orange);margin-top:2px">⚡ OpenAI disponible</div>' : ""}
       </div>
       <span style="font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase">${l.id}</span>
       ${isCur ? '<span style="color:var(--orange);font-weight:700">✓</span>' : ""}
@@ -3582,7 +3219,7 @@
           .join("");
         document.getElementById("langList").innerHTML =
           html ||
-          '<div style="text-align:center;padding:24px;color:var(--dim)">没找到匹配的语言</div>';
+          '<div style="text-align:center;padding:24px;color:var(--dim)">No se encontró el idioma</div>';
       }
 
       function selectLang(code) {
@@ -3592,13 +3229,12 @@
         updateLangDisplay();
         pushConfig();
         closeOverlay();
-        checkOpenAILangPair();
       }
 
       function swapLangs() {
         const t = config.lang;
-        config.lang = config.target === "zh" ? "en" : config.target;
-        config.target = t === "auto" ? "zh" : t;
+        config.lang = config.target === "ru" ? "en" : config.target;
+        config.target = t === "auto" ? "ru" : t;
         updateLangDisplay();
         pushConfig();
       }
@@ -3630,12 +3266,6 @@
         const tts = document.getElementById("toggleTts");
         if (tt) config.translate = tt.classList.contains("on");
         if (tts) config.tts = tts.classList.contains("on");
-        // 从 voice select(它在 form-group 里)
-        const vc = document.getElementById("setVoice");
-        if (vc && vc.value) config.voice = vc.value;
-        // tts toggle off → 隐藏音色
-        const vg = document.getElementById("voiceGroup");
-        if (vg) vg.style.display = config.tts ? "block" : "none";
         send({ command: "update_config", ...config });
       }
 
@@ -3665,7 +3295,7 @@
 
           let waited = 0;
           while (!ws || ws.readyState !== WebSocket.OPEN) {
-            if (waited++ > 10) throw new Error("WS 连接超时");
+            if (waited++ > 10) throw new Error("WS connection timeout");
             await new Promise((r) => setTimeout(r, 500));
           }
 
@@ -3716,17 +3346,17 @@
           backendReady = false;
           b.classList.add("connecting");
           playMicBurst(b);
-          setMicTitle("⏳ 连接中,请稍候…", true);
-          showBusyBanner("正在连接后端,请稍候…");
+          setMicTitle("⏳ Conectando...", true);
+          showBusyBanner("Conectando al servidor...");
           startVAD(); // 后台并行启动, init 期间 vadInstance===null 不门控
         } catch (err) {
           console.error("[mic] error", err);
           cleanupMic();
-          toast(err.message || "麦克风不可用");
+          toast(err.message || "Micrófono no disponible");
         }
       }
 
-      function stopMic(label = "已停止") {
+      function stopMic(label = "Detenido") {
         cleanupMic();
         document.querySelectorAll(".mic").forEach((b) => {
           b.classList.remove("recording");
@@ -3775,7 +3405,7 @@
         if (!window.vad || !window.vad.MicVAD) {
           console.warn("[vad] library not loaded — no gating (passthrough)");
           if (typeof toast === "function")
-            toast("⚠ VAD 库未加载 — 仍可用,但 ASR 幻觉可能多");
+            toast("⚠ VAD not loaded — still usable");
           vadInstance = null;
           vadGate = true;
           return;
@@ -3783,7 +3413,7 @@
         try {
           vadGate = true; // init 期间直通, 不要吞掉头几句
           vadSilentCount = 0;
-          if (typeof toast === "function") toast("⏳ VAD 加载中…");
+          if (typeof toast === "function") toast("⏳ VAD loading...");
           // 用 onFrameProcessed 自实现 hysteresis: 单帧概率快速开门, 多帧静音才关门。
           // 绕开 ricky 库内部 segment 状态机的 preSpeechPad/redemption 延迟, 让 ASR 听到 speech 开头。
           const inst = await window.vad.MicVAD.new({
@@ -3804,11 +3434,11 @@
           await inst.start();
           vadInstance = inst;
           console.log("[vad] ready");
-          if (typeof toast === "function") toast("✓ VAD 已就绪 — 静音帧将被过滤");
+          if (typeof toast === "function") toast("✓ VAD ready");
         } catch (e) {
           console.error("[vad] init failed — passthrough", e);
           if (typeof toast === "function")
-            toast("⚠ VAD 加载失败 — 仍可用,但 ASR 幻觉可能多");
+            toast("⚠ VAD load failed — still usable");
           vadInstance = null;
           vadGate = true;
         }
@@ -3878,7 +3508,7 @@
           b.classList.add("recording");
         });
         hideBusyBanner();
-        setMicTitle(`${engLabel || ""} · 录音中`.trim(), false);
+        setMicTitle(`${engLabel || ""} · Grabando`.trim(), false);
         startWaveViz();
       }
 
@@ -4022,9 +3652,9 @@
 
       function doCreateRoom() {
         const name =
-          document.getElementById("createName").value.trim() || "会议";
-        const nick = document.getElementById("createNick").value.trim() || "我";
-        const target = document.getElementById("createTarget").value || "zh";
+          document.getElementById("createName").value.trim() || "Sala";
+        const nick = document.getElementById("createNick").value.trim() || "Yo";
+        const target = document.getElementById("createTarget").value || "ru";
         config.target = target;
         closeOverlay();
         send({ command: "create_room", room_name: name, name: nick, target });
@@ -4036,11 +3666,11 @@
           .value.trim()
           .toUpperCase();
         if (!code) {
-          toast("请填邀请码");
+          toast("Ingresa el código");
           return;
         }
-        const nick = document.getElementById("joinNick").value.trim() || "我";
-        const target = document.getElementById("joinTarget").value || "zh";
+        const nick = document.getElementById("joinNick").value.trim() || "Yo";
+        const target = document.getElementById("joinTarget").value || "ru";
         config.target = target;
         closeOverlay();
         send({ command: "join_room", code, name: nick, target });
@@ -4061,7 +3691,7 @@
         const el = document.getElementById("trialModal");
         const cnt = document.getElementById("trialCount");
         if (cnt && used != null && limit != null) {
-          cnt.textContent = `${used} / ${limit} 已使用`;
+          cnt.textContent = `${used} / ${limit} usados`;
         }
         if (el) {
           el.classList.remove("closing");
@@ -4124,11 +3754,11 @@
         const nickname = document.getElementById("regNick").value.trim();
         const pwd = document.getElementById("regPwd").value;
         if (!email || !pwd) {
-          toast("邮箱和密码必填");
+          toast("Correo y contraseña son obligatorios");
           return;
         }
         if (pwd.length < 6) {
-          toast("密码至少 6 位");
+          toast("Mínimo 6 caracteres");
           return;
         }
         try {
@@ -4139,15 +3769,15 @@
           });
           if (!r.ok) {
             const e = await r.json().catch(() => ({}));
-            toast(e.detail || "注册失败");
+            toast(e.detail || "Error en el registro");
             return;
           }
           const data = await r.json();
           currentUser = data.user;
-          toast("注册成功, 欢迎 " + (data.user.nickname || data.user.email));
+          toast("Registro exitoso, bienvenido " + (data.user.nickname || data.user.email));
           onAuthSuccess();
         } catch (e) {
-          toast("网络错误");
+          toast("Error de red");
         }
       }
 
@@ -4155,7 +3785,7 @@
         const email = document.getElementById("loginEmail").value.trim();
         const pwd = document.getElementById("loginPwd").value;
         if (!email || !pwd) {
-          toast("邮箱和密码必填");
+          toast("Correo y contraseña son obligatorios");
           return;
         }
         try {
@@ -4166,14 +3796,14 @@
           });
           if (!r.ok) {
             const e = await r.json().catch(() => ({}));
-            toast(e.detail || "登录失败");
+            toast(e.detail || "Error al iniciar sesión");
             return;
           }
           const data = await r.json();
           currentUser = data.user;
           onAuthSuccess();
         } catch (e) {
-          toast("网络错误");
+          toast("Error de red");
         }
       }
 
@@ -4190,7 +3820,7 @@
           ws = null;
         }
         show("viewAuth");
-        toast("已退出");
+        toast("Sesión cerrada");
       }
 
       function onAuthSuccess() {
@@ -4207,9 +3837,9 @@
         if (trial && trial.limit) {
           const remain = Math.max(0, trial.limit - trial.used);
           const cls = remain === 0 ? "trial-pill empty" : "trial-pill";
-          trialPill = `<span class="${cls}" title="试用剩余次数">试用 ${remain}/${trial.limit}</span>`;
+          trialPill = `<span class="${cls}" title="Usos restantes">Prueba ${remain}/${trial.limit}</span>`;
         }
-        subEl.innerHTML = `欢迎,<b>${escapeHtml(currentUser.nickname)}</b>${trialPill} · <a onclick="doLogout()" style="color:var(--orange);cursor:pointer;text-decoration:underline">退出</a>`;
+        subEl.innerHTML = `Hola, <b>${escapeHtml(currentUser.nickname)}</b>${trialPill} · <a onclick="doLogout()" style="color:var(--orange);cursor:pointer;text-decoration:underline">Salir</a>`;
       }
 
       async function refreshTrialStatus() {
@@ -4253,44 +3883,25 @@
               el.innerHTML = COMMON_LANGS.filter((l) => l.id !== "auto")
                 .map((l) => `<option value="${l.id}">${l.label}</option>`)
                 .join("");
-            if (id.includes("Target")) el.value = "zh";
+            if (id.includes("Target")) el.value = "ru";
             if (id === "setAsrLang") el.value = "auto";
           },
         );
 
-        // 填充 voice select
-        try {
-          const r = await fetch("/voices");
-          const v = await r.json();
-          const vs = document.getElementById("setVoice");
-          if (vs) {
-            vs.innerHTML = v
-              .map((x) => `<option value="${x}">${x}</option>`)
-              .join("");
-            vs.value = config.voice;
-          }
-        } catch (e) {
-          console.warn("voices", e);
-        }
 
         // 绑定 onchange
-        ["setAsrLang", "setTargetLang", "setVoice"].forEach((id) => {
+        ["setAsrLang", "setTargetLang"].forEach((id) => {
           const el = document.getElementById(id);
           if (!el) return;
           el.onchange = () => {
             if (id === "setAsrLang") config.lang = el.value;
             else if (id === "setTargetLang") config.target = el.value;
-            else if (id === "setVoice") config.voice = el.value;
             updateLangDisplay();
             pushConfig();
           };
         });
 
         updateLangDisplay();
-        syncEngineUI();
-
-        // 网络可达性预检 (不阻塞认证, 但会在 UI 上反映)
-        checkNetwork();
 
         // 检查登录状态
         try {
