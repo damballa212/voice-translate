@@ -137,6 +137,15 @@ def init():
         );
         CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
         """)
+        for sql in [
+            "ALTER TABLE dm_messages ADD COLUMN translations_json TEXT NOT NULL DEFAULT '{}'",
+            "ALTER TABLE dm_messages ADD COLUMN transcript TEXT",
+            "ALTER TABLE dm_members ADD COLUMN target_lang TEXT NOT NULL DEFAULT 'en'",
+        ]:
+            try:
+                c.execute(sql)
+            except Exception:
+                pass
 
 
 # ============================================================
@@ -432,6 +441,11 @@ def _dm_participant(c, conversation_id: int, current_user_id: int) -> Optional[d
 def _dm_message_dict(row) -> dict:
     d = dict(row)
     d["is_voice"] = d.get("kind") == "voice"
+    raw_tj = d.get("translations_json") or "{}"
+    try:
+        d["translations_json"] = json.loads(raw_tj) if isinstance(raw_tj, str) else raw_tj
+    except Exception:
+        d["translations_json"] = {}
     return d
 
 
@@ -509,7 +523,7 @@ def dm_list_conversations(user_id: int) -> list:
             last = c.execute("""
                 SELECT id, conversation_id, sender_user_id, kind, body,
                        voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
-                       created_at, deleted_at
+                       translations_json, transcript, created_at, deleted_at
                 FROM dm_messages
                 WHERE conversation_id = ? AND deleted_at IS NULL
                 ORDER BY created_at DESC, id DESC
@@ -539,7 +553,7 @@ def dm_list_messages(conversation_id: int, user_id: int, limit: int = 100) -> li
         rows = c.execute("""
             SELECT id, conversation_id, sender_user_id, kind, body,
                    voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
-                   created_at, deleted_at
+                   translations_json, transcript, created_at, deleted_at
             FROM dm_messages
             WHERE conversation_id = ? AND deleted_at IS NULL
             ORDER BY created_at DESC, id DESC
@@ -548,19 +562,21 @@ def dm_list_messages(conversation_id: int, user_id: int, limit: int = 100) -> li
         return [_dm_message_dict(r) for r in reversed(rows)]
 
 
-def dm_add_text_message(conversation_id: int, sender_user_id: int, body: str) -> dict:
+def dm_add_text_message(conversation_id: int, sender_user_id: int, body: str,
+                        translations_json: dict | None = None) -> dict:
     text = (body or "").strip()
     if not text:
         raise ValueError("El mensaje está vacío")
     if len(text) > 4000:
         raise ValueError("El mensaje es demasiado largo")
+    tj = json.dumps(translations_json or {}, ensure_ascii=False)
     with conn() as c:
         _dm_require_member(c, conversation_id, sender_user_id)
         now = time.time()
         cur = c.execute("""
-            INSERT INTO dm_messages (conversation_id, sender_user_id, kind, body, created_at)
-            VALUES (?, ?, 'text', ?, ?)
-        """, (conversation_id, sender_user_id, text, now))
+            INSERT INTO dm_messages (conversation_id, sender_user_id, kind, body, translations_json, created_at)
+            VALUES (?, ?, 'text', ?, ?, ?)
+        """, (conversation_id, sender_user_id, text, tj, now))
         c.execute(
             "UPDATE dm_conversations SET updated_at = ? WHERE id = ?",
             (now, conversation_id),
@@ -568,26 +584,30 @@ def dm_add_text_message(conversation_id: int, sender_user_id: int, body: str) ->
         row = c.execute("""
             SELECT id, conversation_id, sender_user_id, kind, body,
                    voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
-                   created_at, deleted_at
+                   translations_json, transcript, created_at, deleted_at
             FROM dm_messages WHERE id = ?
         """, (cur.lastrowid,)).fetchone()
         return _dm_message_dict(row)
 
 
 def dm_add_voice_message(conversation_id: int, sender_user_id: int, path: str,
-                         mime: str, duration_ms: int, size_bytes: int) -> dict:
+                         mime: str, duration_ms: int, size_bytes: int,
+                         transcript: str | None = None,
+                         translations_json: dict | None = None) -> dict:
     if not path or not mime:
         raise ValueError("Nota de voz inválida")
+    tj = json.dumps(translations_json or {}, ensure_ascii=False)
     with conn() as c:
         _dm_require_member(c, conversation_id, sender_user_id)
         now = time.time()
         cur = c.execute("""
             INSERT INTO dm_messages (
                 conversation_id, sender_user_id, kind, voice_path, voice_mime,
-                voice_duration_ms, voice_size_bytes, created_at
+                voice_duration_ms, voice_size_bytes, transcript, translations_json, created_at
             )
-            VALUES (?, ?, 'voice', ?, ?, ?, ?, ?)
-        """, (conversation_id, sender_user_id, path, mime, duration_ms, size_bytes, now))
+            VALUES (?, ?, 'voice', ?, ?, ?, ?, ?, ?, ?)
+        """, (conversation_id, sender_user_id, path, mime, duration_ms, size_bytes,
+              transcript, tj, now))
         c.execute(
             "UPDATE dm_conversations SET updated_at = ? WHERE id = ?",
             (now, conversation_id),
@@ -595,7 +615,7 @@ def dm_add_voice_message(conversation_id: int, sender_user_id: int, path: str,
         row = c.execute("""
             SELECT id, conversation_id, sender_user_id, kind, body,
                    voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
-                   created_at, deleted_at
+                   translations_json, transcript, created_at, deleted_at
             FROM dm_messages WHERE id = ?
         """, (cur.lastrowid,)).fetchone()
         return _dm_message_dict(row)
@@ -616,12 +636,28 @@ def dm_get_message(message_id: int, user_id: int) -> Optional[dict]:
         row = c.execute("""
             SELECT m.id, m.conversation_id, m.sender_user_id, m.kind, m.body,
                    m.voice_path, m.voice_mime, m.voice_duration_ms, m.voice_size_bytes,
-                   m.created_at, m.deleted_at
+                   m.translations_json, m.transcript, m.created_at, m.deleted_at
             FROM dm_messages m
             JOIN dm_members dm ON dm.conversation_id = m.conversation_id
             WHERE m.id = ? AND dm.user_id = ? AND m.deleted_at IS NULL
         """, (message_id, user_id)).fetchone()
         return _dm_message_dict(row) if row else None
+
+
+def dm_member_target_langs(conversation_id: int) -> list[dict]:
+    with conn() as c:
+        rows = c.execute("""
+            SELECT user_id, target_lang FROM dm_members WHERE conversation_id = ?
+        """, (conversation_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def dm_set_member_target_lang(conversation_id: int, user_id: int, target_lang: str):
+    lang = (target_lang or "en").strip().lower()
+    with conn() as c:
+        c.execute("""
+            UPDATE dm_members SET target_lang = ? WHERE conversation_id = ? AND user_id = ?
+        """, (lang, conversation_id, user_id))
 
 
 # ============================================================

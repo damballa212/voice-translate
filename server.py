@@ -17,6 +17,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from openai_translator import OpenAITranslator, OPENAI_LANGS
 from logger import log, ok, err
+from text_translator import translate_for_members, translate_text as _translate_text
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -706,7 +707,22 @@ async def ws_endpoint(ws: WebSocket):
                 try:
                     conversation_id = int(msg.get("conversation_id") or 0)
                     body = msg.get("body") or ""
-                    saved = db.dm_add_text_message(conversation_id, user["id"], body)
+                    members = db.dm_member_target_langs(conversation_id)
+                    sender_id = user["id"]
+                    target_langs = [
+                        m["target_lang"] for m in members
+                        if m["user_id"] != sender_id and m.get("target_lang")
+                    ]
+                    translations = {}
+                    if target_langs:
+                        try:
+                            translations = await translate_for_members(
+                                body, target_langs,
+                                sender_name=user.get("nickname") or user.get("email"),
+                            )
+                        except Exception as e:
+                            err("dm", f"translate failed, sending without translation: {e}")
+                    saved = db.dm_add_text_message(conversation_id, sender_id, body, translations)
                     _dm_broadcast(conversation_id, {
                         "type": "dm_message",
                         "message": saved,
@@ -749,6 +765,39 @@ async def ws_endpoint(ws: WebSocket):
                     })
                 except PermissionError:
                     await outbox.put({"type": "error", "message": "No tienes acceso a esta conversación"})
+
+            elif cmd == "dm_set_lang":
+                try:
+                    conversation_id = int(msg.get("conversation_id") or 0)
+                    target_lang = (msg.get("target_lang") or "en").strip().lower()
+                    if db.dm_is_member(conversation_id, user["id"]):
+                        db.dm_set_member_target_lang(conversation_id, user["id"], target_lang)
+                except Exception as e:
+                    err("dm", f"dm_set_lang: {e}")
+
+            elif cmd == "dm_translate_bubble":
+                try:
+                    message_id = int(msg.get("message_id") or 0)
+                    target_lang = (msg.get("target_lang") or "en").strip().lower()
+                    message = db.dm_get_message(message_id, user["id"])
+                    if not message:
+                        raise PermissionError("Mensaje no encontrado")
+                    text = (message.get("body") or message.get("transcript") or "").strip()
+                    if not text:
+                        await outbox.put({"type": "error", "message": "Nada que traducir"})
+                    else:
+                        result = await _translate_text(text, target_lang)
+                        await outbox.put({
+                            "type": "dm_bubble_translation",
+                            "message_id": message_id,
+                            "target_lang": target_lang,
+                            "translated": result["translated"],
+                            "source_lang": result["source_lang"],
+                        })
+                except PermissionError:
+                    await outbox.put({"type": "error", "message": "No tienes acceso"})
+                except Exception as e:
+                    err("dm", f"dm_translate_bubble: {e}")
 
             elif cmd == "ping":
                 await outbox.put({"type": "pong"})
@@ -1028,6 +1077,43 @@ async def dm_upload_voice(conversation_id: int, request: Request):
     path = VOICE_NOTES_DIR / filename
     path.write_bytes(data)
 
+    transcript = None
+    translations: dict = {}
+
+    openai_key = os.getenv("OPENAI_API_KEY", "")
+    if openai_key:
+        try:
+            import httpx as _httpx
+            import io
+            ext = VOICE_NOTE_MIME_EXT.get(mime, ".webm")
+            fname = f"voice{ext}"
+            async with _httpx.AsyncClient(timeout=20) as client:
+                asr_r = await client.post(
+                    "https://api.openai.com/v1/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {openai_key}"},
+                    files={"file": (fname, io.BytesIO(data), mime)},
+                    data={"model": "whisper-1"},
+                )
+                if asr_r.status_code == 200:
+                    transcript = (asr_r.json().get("text") or "").strip() or None
+        except Exception as e:
+            err("asr", f"whisper transcription failed: {e}")
+
+    if transcript:
+        try:
+            members = db.dm_member_target_langs(conversation_id)
+            target_langs = [
+                m["target_lang"] for m in members
+                if m["user_id"] != u["id"] and m.get("target_lang")
+            ]
+            if target_langs:
+                translations = await translate_for_members(
+                    transcript, target_langs,
+                    sender_name=u.get("nickname") or u.get("email"),
+                )
+        except Exception as e:
+            err("dm", f"voice note translation failed: {e}")
+
     try:
         msg = db.dm_add_voice_message(
             conversation_id=conversation_id,
@@ -1036,6 +1122,8 @@ async def dm_upload_voice(conversation_id: int, request: Request):
             mime=mime,
             duration_ms=duration_ms,
             size_bytes=len(data),
+            transcript=transcript,
+            translations_json=translations or None,
         )
     except Exception:
         try:
@@ -1061,6 +1149,42 @@ async def dm_voice(message_id: int, request: Request):
     if not path.exists() or not path.is_file():
         raise HTTPException(404, "Nota de voz no encontrada")
     return FileResponse(path, media_type=msg.get("voice_mime") or "application/octet-stream")
+
+
+@app.get("/dm/tts/{message_id}")
+async def dm_tts(message_id: int, request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    msg = db.dm_get_message(message_id, u["id"])
+    if not msg:
+        raise HTTPException(404, "Mensaje no encontrado")
+    text = (msg.get("body") or msg.get("transcript") or "").strip()
+    if not text:
+        raise HTTPException(400, "Nada que leer")
+    openai_key = os.getenv("OPENAI_API_KEY", "")
+    if not openai_key:
+        raise HTTPException(503, "TTS no disponible")
+    import httpx as _httpx
+    tts_payload = {
+        "model": "tts-1",
+        "input": text[:500],
+        "voice": "alloy",
+        "response_format": "mp3",
+    }
+    async with _httpx.AsyncClient(timeout=20) as client:
+        r = await client.post(
+            "https://api.openai.com/v1/audio/speech",
+            headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
+            json=tts_payload,
+        )
+        if r.status_code != 200:
+            raise HTTPException(502, "TTS backend error")
+        return Response(
+            content=r.content,
+            media_type="audio/mpeg",
+            headers={"Cache-Control": "no-store"},
+        )
 
 
 # ============================================================

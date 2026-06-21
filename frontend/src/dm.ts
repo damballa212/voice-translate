@@ -1,8 +1,8 @@
 /**
  * dm.ts — Mensajeria persistente 1:1 por email.
  */
-import { $, $opt, app, escapeHtml, scrollDown } from "./state";
-import type { DmConversation, DmMessage, DmMessageMsg } from "./protocol";
+import { $, $opt, app, escapeHtml, scrollDown, config } from "./state";
+import type { DmConversation, DmMessage, DmMessageMsg, DmBubbleTranslationMsg } from "./protocol";
 import { send } from "./ws";
 import { show } from "./nav";
 import { showPanel, closeOverlay } from "./panels";
@@ -146,6 +146,8 @@ export async function openChat(id: number): Promise<void> {
   $("chatAvatar").textContent = (conv.participant.nickname || conv.participant.email).charAt(0).toUpperCase();
   $("chatMessages").innerHTML = `<div class="record-empty">${escapeHtml(t("dm-loading"))}</div>`;
   show("viewChat");
+  const myLang = (config.target || "en");
+  send({ command: "dm_set_lang", conversation_id: id, target_lang: myLang });
   await loadMessages(id);
 }
 
@@ -179,22 +181,127 @@ function renderMessage(message: DmMessage): void {
   const div = document.createElement("div");
   div.className = `chat-bubble ${mine ? "out" : "in"}`;
   div.id = `dm-msg-${message.id}`;
+  div.dataset.messageId = String(message.id);
+  const myTarget = config.target || "en";
   if (message.kind === "voice") {
     const secs = Math.max(0, Math.round((message.voice_duration_ms || 0) / 1000));
+    const hasTranscript = message.transcript && message.transcript.trim();
+    const translatedText = !mine ? (message.translations_json?.[myTarget] || "") : "";
     div.innerHTML = `<button class="voice-bubble" onclick="playDmVoice(${message.id})">
       <span class="voice-play">▶</span>
       <span class="voice-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
       <span class="voice-duration">${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}</span>
-    </button>`;
+    </button>${hasTranscript ? `<span class="chat-transcript">${escapeHtml(message.transcript!)}</span>` : ""}${translatedText ? `<span class="chat-translation">${escapeHtml(translatedText)}</span>` : ""}`;
   } else {
-    div.textContent = message.body || "";
+    const translatedText = !mine ? (message.translations_json?.[myTarget] || "") : "";
+    const bodyEl = document.createElement("span");
+    bodyEl.className = "chat-body";
+    bodyEl.textContent = message.body || "";
+    div.appendChild(bodyEl);
+    if (translatedText) {
+      const transEl = document.createElement("span");
+      transEl.className = "chat-translation";
+      transEl.textContent = translatedText;
+      div.appendChild(transEl);
+    }
   }
   const time = document.createElement("span");
   time.className = "chat-time";
   time.textContent = formatTime(message.created_at);
   div.appendChild(time);
+  div.addEventListener("contextmenu", (ev) => { ev.preventDefault(); showBubbleMenu(message, div); });
+  div.addEventListener("pointerdown", makeLongPressHandler(message, div));
   el.appendChild(div);
   scrollDown("chatMessages");
+}
+
+let _activeBubbleMenu: HTMLElement | null = null;
+
+function dismissBubbleMenu(): void {
+  _activeBubbleMenu?.remove();
+  _activeBubbleMenu = null;
+}
+
+function showBubbleMenu(message: DmMessage, bubbleEl: HTMLElement): void {
+  dismissBubbleMenu();
+  const menu = document.createElement("div");
+  menu.className = "bubble-menu";
+  const text = message.body || message.transcript || "";
+  const myTarget = config.target || "en";
+  const actions: Array<{ label: string; action: () => void }> = [];
+  if (text) {
+    actions.push({
+      label: t("bubble-menu-translate"),
+      action: () => {
+        send({ command: "dm_translate_bubble", message_id: message.id, target_lang: myTarget });
+        dismissBubbleMenu();
+      },
+    });
+    actions.push({
+      label: t("bubble-menu-tts"),
+      action: () => {
+        dismissBubbleMenu();
+        const audio = new Audio(`/dm/tts/${message.id}`);
+        audio.play().catch(() => toast(t("dm-voice-play-error")));
+      },
+    });
+    actions.push({
+      label: t("bubble-menu-copy"),
+      action: () => {
+        navigator.clipboard?.writeText(text).catch(() => {});
+        toast(t("bubble-menu-copied"));
+        dismissBubbleMenu();
+      },
+    });
+  }
+  if (!actions.length) return;
+  actions.forEach(({ label, action }) => {
+    const btn = document.createElement("button");
+    btn.className = "bubble-menu-btn";
+    btn.textContent = label;
+    btn.addEventListener("click", action);
+    menu.appendChild(btn);
+  });
+  document.body.appendChild(menu);
+  _activeBubbleMenu = menu;
+  const rect = bubbleEl.getBoundingClientRect();
+  const menuH = actions.length * 44;
+  let top = rect.top - menuH - 8;
+  if (top < 8) top = rect.bottom + 8;
+  menu.style.top = `${top + window.scrollY}px`;
+  menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 170))}px`;
+  const dismiss = (ev: Event) => {
+    if (!menu.contains(ev.target as Node)) {
+      dismissBubbleMenu();
+      document.removeEventListener("pointerdown", dismiss);
+    }
+  };
+  setTimeout(() => document.addEventListener("pointerdown", dismiss), 50);
+}
+
+function makeLongPressHandler(message: DmMessage, bubbleEl: HTMLElement) {
+  return (ev: PointerEvent) => {
+    if (ev.pointerType === "mouse") return;
+    const timer = setTimeout(() => {
+      showBubbleMenu(message, bubbleEl);
+    }, 500);
+    const cancel = () => clearTimeout(timer);
+    bubbleEl.addEventListener("pointerup", cancel, { once: true });
+    bubbleEl.addEventListener("pointermove", cancel, { once: true });
+  };
+}
+
+export function onDmBubbleTranslation(m: DmBubbleTranslationMsg): void {
+  const bubbleEl = document.getElementById(`dm-msg-${m.message_id}`);
+  if (!bubbleEl) return;
+  let transEl = bubbleEl.querySelector<HTMLElement>(".chat-translation");
+  if (!transEl) {
+    transEl = document.createElement("span");
+    transEl.className = "chat-translation";
+    const timeEl = bubbleEl.querySelector(".chat-time");
+    bubbleEl.insertBefore(transEl, timeEl || null);
+  }
+  transEl.textContent = m.translated;
 }
 
 export function sendChatText(): void {

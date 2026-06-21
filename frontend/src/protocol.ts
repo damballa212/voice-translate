@@ -70,6 +70,8 @@ export interface DmMessage {
   voice_mime?: string | null;
   voice_duration_ms?: number | null;
   voice_size_bytes?: number | null;
+  translations_json?: Record<string, string>;
+  transcript?: string | null;
   created_at: number;
   deleted_at?: number | null;
   is_voice?: boolean;
@@ -216,6 +218,13 @@ export interface DmTypingMsg {
   user_id: number;
   typing: boolean;
 }
+export interface DmBubbleTranslationMsg {
+  type: "dm_bubble_translation";
+  message_id: number;
+  target_lang: string;
+  translated: string;
+  source_lang: string;
+}
 
 export type ServerMessage =
   | TranscriptMsg
@@ -235,4 +244,5 @@ export type ServerMessage =
   | RoomClosedMsg
   | DmMessageMsg
   | DmReadMsg
-  | DmTypingMsg;
+  | DmTypingMsg
+  | DmBubbleTranslationMsg;
