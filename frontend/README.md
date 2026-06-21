@@ -33,12 +33,12 @@ Esto hace proxy de `/auth`, `/ws`, `/recordings` y `/export` hacia tu servidor.
 ## Producción
 
 ```bash
-npm run build      # typecheck + vite build → carpeta dist/
+npm run build      # typecheck + vite build → ../static/
 ```
 
-Sirve la carpeta `dist/` desde tu backend (FastAPI, etc.) junto a la API. En el
-build de producción el modo demo queda **desactivado**: sin sesión se muestra la
-pantalla de login.
+El build actualiza `../static/index.html` y `../static/assets/`, que son los
+archivos servidos por FastAPI. En producción el modo demo queda
+**desactivado**: sin sesión se muestra la pantalla de login.
 
 ## Vista previa sin compilar
 

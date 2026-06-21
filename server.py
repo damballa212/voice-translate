@@ -10,6 +10,7 @@ import time
 import traceback
 import secrets
 import uuid
+from pathlib import Path
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -38,6 +39,15 @@ LANGS = {
 
 # Trial limit per user (0 = unlimited). Override via TRIAL_LIMIT env var.
 TRIAL_LIMIT = int(os.getenv("TRIAL_LIMIT", "0"))
+VOICE_NOTES_DIR = Path(os.getenv("VOICE_NOTES_DIR", "data/voice-notes"))
+VOICE_NOTE_MAX_BYTES = int(os.getenv("VOICE_NOTE_MAX_BYTES", str(10 * 1024 * 1024)))
+VOICE_NOTE_MIME_EXT = {
+    "audio/webm": ".webm",
+    "audio/mp4": ".m4a",
+    "audio/mpeg": ".mp3",
+    "audio/wav": ".wav",
+    "audio/ogg": ".ogg",
+}
 
 
 # ============================================================
@@ -124,6 +134,47 @@ class RoomManager:
 
 
 room_manager = RoomManager()
+
+
+# ============================================================
+# DM realtime fanout
+# ============================================================
+dm_connections = {}
+dm_connections_lock = threading.Lock()
+
+
+def _dm_register(user_id, send):
+    with dm_connections_lock:
+        dm_connections.setdefault(user_id, set()).add(send)
+
+
+def _dm_unregister(user_id, send):
+    with dm_connections_lock:
+        conns = dm_connections.get(user_id)
+        if not conns:
+            return
+        conns.discard(send)
+        if not conns:
+            dm_connections.pop(user_id, None)
+
+
+def _dm_broadcast(conversation_id, msg):
+    try:
+        user_ids = db.dm_conversation_member_ids(conversation_id)
+    except Exception as e:
+        log("dm", f"member lookup failed: {e}")
+        return
+    with dm_connections_lock:
+        targets = [
+            send
+            for uid in user_ids
+            for send in dm_connections.get(uid, set())
+        ]
+    for send in targets:
+        try:
+            send(msg)
+        except Exception as e:
+            log("dm", f"broadcast failed: {e}")
 
 
 # ============================================================
@@ -260,6 +311,8 @@ async def ws_endpoint(ws: WebSocket):
 
     def _send_threadsafe(msg):
         main_loop.call_soon_threadsafe(outbox.put_nowait, msg)
+
+    _dm_register(user["id"], _send_threadsafe)
 
     async def sender():
         while True:
@@ -596,6 +649,53 @@ async def ws_endpoint(ws: WebSocket):
                         speaker=msg.get("speaker") or "",
                     )
 
+            elif cmd == "dm_send_text":
+                try:
+                    conversation_id = int(msg.get("conversation_id") or 0)
+                    body = msg.get("body") or ""
+                    saved = db.dm_add_text_message(conversation_id, user["id"], body)
+                    _dm_broadcast(conversation_id, {
+                        "type": "dm_message",
+                        "message": saved,
+                    })
+                except PermissionError:
+                    await outbox.put({"type": "error", "message": "No tienes acceso a esta conversación"})
+                except ValueError as e:
+                    await outbox.put({"type": "error", "message": str(e)})
+                except Exception as e:
+                    err("dm", f"send_text: {e}")
+                    await outbox.put({"type": "error", "message": "No se pudo enviar el mensaje"})
+
+            elif cmd == "dm_mark_read":
+                try:
+                    conversation_id = int(msg.get("conversation_id") or 0)
+                    message_id = int(msg.get("message_id") or 0)
+                    db.dm_mark_read(conversation_id, user["id"], message_id)
+                    _dm_broadcast(conversation_id, {
+                        "type": "dm_read",
+                        "conversation_id": conversation_id,
+                        "user_id": user["id"],
+                        "message_id": message_id,
+                    })
+                except PermissionError:
+                    await outbox.put({"type": "error", "message": "No tienes acceso a esta conversación"})
+                except Exception as e:
+                    err("dm", f"mark_read: {e}")
+
+            elif cmd == "dm_typing":
+                try:
+                    conversation_id = int(msg.get("conversation_id") or 0)
+                    if not db.dm_is_member(conversation_id, user["id"]):
+                        raise PermissionError()
+                    _dm_broadcast(conversation_id, {
+                        "type": "dm_typing",
+                        "conversation_id": conversation_id,
+                        "user_id": user["id"],
+                        "typing": bool(msg.get("typing")),
+                    })
+                except PermissionError:
+                    await outbox.put({"type": "error", "message": "No tienes acceso a esta conversación"})
+
             elif cmd == "ping":
                 await outbox.put({"type": "pong"})
 
@@ -623,6 +723,7 @@ async def ws_endpoint(ws: WebSocket):
                 log("ws", f"disconnect cleanup: removed {member_id} from {code}")
             except Exception:
                 pass
+        _dm_unregister(user["id"], _send_threadsafe)
         await outbox.put(None)
         sender_task.cancel()
 
@@ -792,6 +893,109 @@ async def export_room(code: str, request: Request):
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename={code}-{int(time.time())}.md"},
     )
+
+
+# ============================================================
+# Direct messages
+# ============================================================
+@app.get("/dm/conversations")
+async def dm_list_conversations(request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    return db.dm_list_conversations(u["id"])
+
+
+@app.post("/dm/conversations")
+async def dm_create_conversation(request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    body = await request.json()
+    try:
+        return db.dm_create_or_get_conversation(u["id"], body.get("email") or "")
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/dm/conversations/{conversation_id}/messages")
+async def dm_list_messages(conversation_id: int, request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    try:
+        return db.dm_list_messages(conversation_id, u["id"])
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+
+
+@app.post("/dm/conversations/{conversation_id}/voice")
+async def dm_upload_voice(conversation_id: int, request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    if not db.dm_is_member(conversation_id, u["id"]):
+        raise HTTPException(403, "No tienes acceso a esta conversación")
+
+    mime = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
+    if mime not in VOICE_NOTE_MIME_EXT:
+        raise HTTPException(415, "Tipo de audio no permitido")
+
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > VOICE_NOTE_MAX_BYTES:
+        raise HTTPException(413, "La nota de voz es demasiado grande")
+
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, "La nota de voz está vacía")
+    if len(data) > VOICE_NOTE_MAX_BYTES:
+        raise HTTPException(413, "La nota de voz es demasiado grande")
+
+    try:
+        duration_ms = int(request.headers.get("x-voice-duration-ms") or "0")
+    except ValueError:
+        duration_ms = 0
+    duration_ms = max(0, min(duration_ms, 30 * 60 * 1000))
+
+    VOICE_NOTES_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"{conversation_id}-{u['id']}-{secrets.token_urlsafe(18)}{VOICE_NOTE_MIME_EXT[mime]}"
+    path = VOICE_NOTES_DIR / filename
+    path.write_bytes(data)
+
+    try:
+        msg = db.dm_add_voice_message(
+            conversation_id=conversation_id,
+            sender_user_id=u["id"],
+            path=str(path),
+            mime=mime,
+            duration_ms=duration_ms,
+            size_bytes=len(data),
+        )
+    except Exception:
+        try:
+            path.unlink()
+        except Exception:
+            pass
+        raise
+
+    _dm_broadcast(conversation_id, {"type": "dm_message", "message": msg})
+    return msg
+
+
+@app.get("/dm/voice/{message_id}")
+async def dm_voice(message_id: int, request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    msg = db.dm_get_message(message_id, u["id"])
+    if not msg or msg.get("kind") != "voice" or not msg.get("voice_path"):
+        raise HTTPException(404, "Nota de voz no encontrada")
+    path = Path(msg["voice_path"])
+    if not path.exists() or not path.is_file():
+        raise HTTPException(404, "Nota de voz no encontrada")
+    return FileResponse(path, media_type=msg.get("voice_mime") or "application/octet-stream")
 
 
 # ============================================================

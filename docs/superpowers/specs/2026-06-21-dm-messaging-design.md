@@ -172,10 +172,12 @@ The MVP can return the latest 100 messages in chronological order. Add cursor pa
 
 ### `POST /dm/conversations/{conversation_id}/voice`
 
-Accepts `multipart/form-data`:
+Accepts a raw audio request body. The frontend sends the recorded `Blob` as the body to avoid adding a multipart dependency.
 
-- `audio`: file
-- `duration_ms`: integer
+Required headers:
+
+- `Content-Type`: audio MIME type
+- `X-Voice-Duration-Ms`: integer duration in milliseconds
 
 Server validation:
 

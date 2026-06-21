@@ -106,7 +106,10 @@ export function onAuthSuccess(): void {
 
 export function renderUserBadge(): void {
   const subEl = document.querySelector<HTMLElement>("#viewLanding .hero .sub");
-  if (!subEl || !app.currentUser) return;
+  if (!app.currentUser) return;
+  const settingsEmail = $opt("settingsUserEmail");
+  if (settingsEmail) settingsEmail.textContent = app.currentUser.email;
+  if (!subEl) return;
   const trial = app.currentUser.trial;
   let trialPill = "";
   if (trial && trial.limit) {

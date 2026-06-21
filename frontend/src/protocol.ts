@@ -48,9 +48,40 @@ export interface TrialInfo {
 }
 
 export interface User {
+  id?: number;
   email: string;
   nickname: string;
   trial?: TrialInfo;
+}
+
+export interface DmParticipant {
+  id: number;
+  email: string;
+  nickname: string;
+}
+
+export interface DmMessage {
+  id: number;
+  conversation_id: number;
+  sender_user_id: number;
+  kind: "text" | "voice";
+  body?: string | null;
+  voice_path?: string | null;
+  voice_mime?: string | null;
+  voice_duration_ms?: number | null;
+  voice_size_bytes?: number | null;
+  created_at: number;
+  deleted_at?: number | null;
+  is_voice?: boolean;
+}
+
+export interface DmConversation {
+  id: number;
+  created_at: number;
+  updated_at: number;
+  participant: DmParticipant;
+  last_message?: DmMessage | null;
+  unread_count?: number;
 }
 
 /**
@@ -169,6 +200,22 @@ export interface SpeakingMsg extends SpeakingInput {
 export interface RoomClosedMsg {
   type: "room_closed";
 }
+export interface DmMessageMsg {
+  type: "dm_message";
+  message: DmMessage;
+}
+export interface DmReadMsg {
+  type: "dm_read";
+  conversation_id: number;
+  user_id: number;
+  message_id: number;
+}
+export interface DmTypingMsg {
+  type: "dm_typing";
+  conversation_id: number;
+  user_id: number;
+  typing: boolean;
+}
 
 export type ServerMessage =
   | TranscriptMsg
@@ -185,4 +232,7 @@ export type ServerMessage =
   | RoomMessageMsg
   | RoomTranslationMsg
   | SpeakingMsg
-  | RoomClosedMsg;
+  | RoomClosedMsg
+  | DmMessageMsg
+  | DmReadMsg
+  | DmTypingMsg;

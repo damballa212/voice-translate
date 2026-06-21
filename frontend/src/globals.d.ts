@@ -31,6 +31,9 @@ declare global {
     doLogin: () => void;
     doRegister: () => void;
     doLogout: () => void;
+    openHome: () => void;
+    openMessages: () => void;
+    openSettingsRoot: () => void;
     enterSolo: () => void;
     openCreateRoom: () => void;
     openJoinRoom: () => void;
@@ -54,6 +57,15 @@ declare global {
     exportRoom: () => void;
     closeTrialModal: () => void;
     toast: (msg: string) => void;
+    renderConversations: () => void;
+    openNewDm: () => void;
+    doCreateDm: () => void;
+    openChat: (id: number) => void;
+    backToMessages: () => void;
+    sendChatText: () => void;
+    onChatInputKey: (ev: KeyboardEvent) => void;
+    toggleChatVoiceNote: () => void;
+    playDmVoice: (messageId: number) => void;
   }
 }
 

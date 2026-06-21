@@ -20,6 +20,7 @@ import { onBackendReady, playAudio, stopMic } from "./audio";
 import { setMicTitle, showTrialModal, toast } from "./ui";
 import { backToLanding } from "./nav";
 import { t } from "./i18n";
+import { onDmMessage } from "./dm";
 
 export function connectWs(): void {
   if (app.demo) {
@@ -105,6 +106,12 @@ export function handleMessage(m: ServerMessage): void {
     case "room_closed":
       toast(t("ws-room-closed"));
       backToLanding();
+      break;
+    case "dm_message":
+      onDmMessage(m);
+      break;
+    case "dm_read":
+    case "dm_typing":
       break;
   }
 }

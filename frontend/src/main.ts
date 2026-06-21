@@ -6,7 +6,15 @@ import "./styles.css";
 
 import { toast } from "./ui";
 import { initSplash } from "./ui";
-import { show, backToLanding, enterSolo, leaveRoom } from "./nav";
+import {
+  show,
+  backToLanding,
+  enterSolo,
+  leaveRoom,
+  openHome,
+  openSettingsRoot,
+  initBottomNav,
+} from "./nav";
 import {
   switchAuthTab,
   doLogin,
@@ -36,11 +44,26 @@ import { copyRoomCode, copyTranscript, exportRoom } from "./room";
 import { closeTrialModal } from "./ui";
 import { startDemo } from "./demo";
 import { init } from "./boot";
+import {
+  openMessages,
+  renderConversations,
+  openNewDm,
+  doCreateDm,
+  openChat,
+  backToMessages,
+  sendChatText,
+  onChatInputKey,
+  toggleChatVoiceNote,
+  playDmVoice,
+} from "./dm";
 
 // Expone los manejadores que el HTML invoca inline.
 Object.assign(window, {
   toast,
   show,
+  openHome,
+  openMessages,
+  openSettingsRoot,
   backToLanding,
   enterSolo,
   leaveRoom,
@@ -68,8 +91,18 @@ Object.assign(window, {
   copyTranscript,
   exportRoom,
   closeTrialModal,
+  renderConversations,
+  openNewDm,
+  doCreateDm,
+  openChat,
+  backToMessages,
+  sendChatText,
+  onChatInputKey,
+  toggleChatVoiceNote,
+  playDmVoice,
   __startDemo: startDemo,
 });
 
 initSplash();
+initBottomNav();
 init();

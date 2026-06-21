@@ -93,6 +93,39 @@ def init():
         );
         CREATE INDEX IF NOT EXISTS idx_room_messages ON room_messages(room_code, ts);
         CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(user_id);
+
+        CREATE TABLE IF NOT EXISTS dm_conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS dm_members (
+            conversation_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            joined_at REAL NOT NULL,
+            last_read_message_id INTEGER,
+            PRIMARY KEY (conversation_id, user_id),
+            FOREIGN KEY (conversation_id) REFERENCES dm_conversations(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS dm_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            sender_user_id INTEGER NOT NULL,
+            kind TEXT NOT NULL CHECK (kind IN ('text', 'voice')),
+            body TEXT,
+            voice_path TEXT,
+            voice_mime TEXT,
+            voice_duration_ms INTEGER,
+            voice_size_bytes INTEGER,
+            created_at REAL NOT NULL,
+            deleted_at REAL,
+            FOREIGN KEY (conversation_id) REFERENCES dm_conversations(id) ON DELETE CASCADE,
+            FOREIGN KEY (sender_user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_dm_members_user ON dm_members(user_id);
+        CREATE INDEX IF NOT EXISTS idx_dm_messages_conversation ON dm_messages(conversation_id, created_at, id);
+        CREATE INDEX IF NOT EXISTS idx_dm_conversations_updated ON dm_conversations(updated_at DESC);
         """)
 
 
@@ -338,6 +371,247 @@ def rooms_for_user(user_id: int) -> list:
             ORDER BY r.created_at DESC
         """, (user_id, user_id)).fetchall()
         return [dict(r) for r in rows]
+
+
+# ============================================================
+# Direct messages (1:1, email discovery)
+# ============================================================
+def _dm_member_ids(c, conversation_id: int) -> list[int]:
+    rows = c.execute(
+        "SELECT user_id FROM dm_members WHERE conversation_id = ? ORDER BY user_id",
+        (conversation_id,),
+    ).fetchall()
+    return [r["user_id"] for r in rows]
+
+
+def dm_is_member(conversation_id: int, user_id: int) -> bool:
+    with conn() as c:
+        row = c.execute(
+            "SELECT 1 FROM dm_members WHERE conversation_id = ? AND user_id = ?",
+            (conversation_id, user_id),
+        ).fetchone()
+        return bool(row)
+
+
+def dm_conversation_member_ids(conversation_id: int) -> list[int]:
+    with conn() as c:
+        return _dm_member_ids(c, conversation_id)
+
+
+def _dm_require_member(c, conversation_id: int, user_id: int):
+    row = c.execute(
+        "SELECT 1 FROM dm_members WHERE conversation_id = ? AND user_id = ?",
+        (conversation_id, user_id),
+    ).fetchone()
+    if not row:
+        raise PermissionError("No tienes acceso a esta conversación")
+
+
+def _dm_participant(c, conversation_id: int, current_user_id: int) -> Optional[dict]:
+    row = c.execute("""
+        SELECT u.id, u.email, u.nickname
+        FROM dm_members dm
+        JOIN users u ON u.id = dm.user_id
+        WHERE dm.conversation_id = ? AND dm.user_id != ?
+        ORDER BY u.id
+        LIMIT 1
+    """, (conversation_id, current_user_id)).fetchone()
+    return dict(row) if row else None
+
+
+def _dm_message_dict(row) -> dict:
+    d = dict(row)
+    d["is_voice"] = d.get("kind") == "voice"
+    return d
+
+
+def dm_create_or_get_conversation(current_user_id: int, participant_email: str) -> dict:
+    email = (participant_email or "").strip().lower()
+    if not email:
+        raise LookupError("Usuario no encontrado")
+    with conn() as c:
+        current = c.execute(
+            "SELECT id, email, nickname FROM users WHERE id = ?",
+            (current_user_id,),
+        ).fetchone()
+        if not current:
+            raise PermissionError("Sesión inválida")
+        participant = c.execute(
+            "SELECT id, email, nickname FROM users WHERE email = ?",
+            (email,),
+        ).fetchone()
+        if not participant:
+            raise LookupError("Usuario no encontrado")
+        if participant["id"] == current_user_id:
+            raise ValueError("No puedes iniciar un chat contigo mismo")
+
+        existing = c.execute("""
+            SELECT a.conversation_id
+            FROM dm_members a
+            JOIN dm_members b ON b.conversation_id = a.conversation_id
+            WHERE a.user_id = ? AND b.user_id = ?
+            LIMIT 1
+        """, (current_user_id, participant["id"])).fetchone()
+        if existing:
+            conv_id = existing["conversation_id"]
+        else:
+            now = time.time()
+            cur = c.execute(
+                "INSERT INTO dm_conversations (created_at, updated_at) VALUES (?, ?)",
+                (now, now),
+            )
+            conv_id = cur.lastrowid
+            c.execute(
+                "INSERT INTO dm_members (conversation_id, user_id, joined_at) VALUES (?, ?, ?)",
+                (conv_id, current_user_id, now),
+            )
+            c.execute(
+                "INSERT INTO dm_members (conversation_id, user_id, joined_at) VALUES (?, ?, ?)",
+                (conv_id, participant["id"], now),
+            )
+
+        conv = c.execute(
+            "SELECT id, created_at, updated_at FROM dm_conversations WHERE id = ?",
+            (conv_id,),
+        ).fetchone()
+        return {
+            **dict(conv),
+            "participant": {
+                "id": participant["id"],
+                "email": participant["email"],
+                "nickname": participant["nickname"],
+            },
+        }
+
+
+def dm_list_conversations(user_id: int) -> list:
+    with conn() as c:
+        rows = c.execute("""
+            SELECT dc.id, dc.created_at, dc.updated_at,
+                   COALESCE(dm.last_read_message_id, 0) AS last_read_message_id
+            FROM dm_conversations dc
+            JOIN dm_members dm ON dm.conversation_id = dc.id
+            WHERE dm.user_id = ?
+            ORDER BY dc.updated_at DESC, dc.id DESC
+        """, (user_id,)).fetchall()
+        out = []
+        for r in rows:
+            last = c.execute("""
+                SELECT id, conversation_id, sender_user_id, kind, body,
+                       voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
+                       created_at, deleted_at
+                FROM dm_messages
+                WHERE conversation_id = ? AND deleted_at IS NULL
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            """, (r["id"],)).fetchone()
+            unread = c.execute("""
+                SELECT COUNT(*) AS n FROM dm_messages
+                WHERE conversation_id = ?
+                  AND sender_user_id != ?
+                  AND id > ?
+                  AND deleted_at IS NULL
+            """, (r["id"], user_id, r["last_read_message_id"] or 0)).fetchone()["n"]
+            out.append({
+                "id": r["id"],
+                "created_at": r["created_at"],
+                "updated_at": r["updated_at"],
+                "participant": _dm_participant(c, r["id"], user_id),
+                "last_message": _dm_message_dict(last) if last else None,
+                "unread_count": unread,
+            })
+        return out
+
+
+def dm_list_messages(conversation_id: int, user_id: int, limit: int = 100) -> list:
+    with conn() as c:
+        _dm_require_member(c, conversation_id, user_id)
+        rows = c.execute("""
+            SELECT id, conversation_id, sender_user_id, kind, body,
+                   voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
+                   created_at, deleted_at
+            FROM dm_messages
+            WHERE conversation_id = ? AND deleted_at IS NULL
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+        """, (conversation_id, max(1, min(int(limit or 100), 200)))).fetchall()
+        return [_dm_message_dict(r) for r in reversed(rows)]
+
+
+def dm_add_text_message(conversation_id: int, sender_user_id: int, body: str) -> dict:
+    text = (body or "").strip()
+    if not text:
+        raise ValueError("El mensaje está vacío")
+    if len(text) > 4000:
+        raise ValueError("El mensaje es demasiado largo")
+    with conn() as c:
+        _dm_require_member(c, conversation_id, sender_user_id)
+        now = time.time()
+        cur = c.execute("""
+            INSERT INTO dm_messages (conversation_id, sender_user_id, kind, body, created_at)
+            VALUES (?, ?, 'text', ?, ?)
+        """, (conversation_id, sender_user_id, text, now))
+        c.execute(
+            "UPDATE dm_conversations SET updated_at = ? WHERE id = ?",
+            (now, conversation_id),
+        )
+        row = c.execute("""
+            SELECT id, conversation_id, sender_user_id, kind, body,
+                   voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
+                   created_at, deleted_at
+            FROM dm_messages WHERE id = ?
+        """, (cur.lastrowid,)).fetchone()
+        return _dm_message_dict(row)
+
+
+def dm_add_voice_message(conversation_id: int, sender_user_id: int, path: str,
+                         mime: str, duration_ms: int, size_bytes: int) -> dict:
+    if not path or not mime:
+        raise ValueError("Nota de voz inválida")
+    with conn() as c:
+        _dm_require_member(c, conversation_id, sender_user_id)
+        now = time.time()
+        cur = c.execute("""
+            INSERT INTO dm_messages (
+                conversation_id, sender_user_id, kind, voice_path, voice_mime,
+                voice_duration_ms, voice_size_bytes, created_at
+            )
+            VALUES (?, ?, 'voice', ?, ?, ?, ?, ?)
+        """, (conversation_id, sender_user_id, path, mime, duration_ms, size_bytes, now))
+        c.execute(
+            "UPDATE dm_conversations SET updated_at = ? WHERE id = ?",
+            (now, conversation_id),
+        )
+        row = c.execute("""
+            SELECT id, conversation_id, sender_user_id, kind, body,
+                   voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
+                   created_at, deleted_at
+            FROM dm_messages WHERE id = ?
+        """, (cur.lastrowid,)).fetchone()
+        return _dm_message_dict(row)
+
+
+def dm_mark_read(conversation_id: int, user_id: int, message_id: int):
+    with conn() as c:
+        _dm_require_member(c, conversation_id, user_id)
+        c.execute("""
+            UPDATE dm_members
+            SET last_read_message_id = MAX(COALESCE(last_read_message_id, 0), ?)
+            WHERE conversation_id = ? AND user_id = ?
+        """, (int(message_id or 0), conversation_id, user_id))
+
+
+def dm_get_message(message_id: int, user_id: int) -> Optional[dict]:
+    with conn() as c:
+        row = c.execute("""
+            SELECT m.id, m.conversation_id, m.sender_user_id, m.kind, m.body,
+                   m.voice_path, m.voice_mime, m.voice_duration_ms, m.voice_size_bytes,
+                   m.created_at, m.deleted_at
+            FROM dm_messages m
+            JOIN dm_members dm ON dm.conversation_id = m.conversation_id
+            WHERE m.id = ? AND dm.user_id = ? AND m.deleted_at IS NULL
+        """, (message_id, user_id)).fetchone()
+        return _dm_message_dict(row) if row else None
 
 
 # ============================================================
