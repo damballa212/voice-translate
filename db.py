@@ -752,7 +752,8 @@ def dm_get_message(message_id: int, user_id: int) -> Optional[dict]:
         row = c.execute("""
             SELECT m.id, m.conversation_id, m.sender_user_id, m.kind, m.body,
                    m.voice_path, m.voice_mime, m.voice_duration_ms, m.voice_size_bytes,
-                   m.translations_json, m.transcript, m.created_at, m.deleted_at
+                   m.translations_json, m.transcript, m.created_at, m.deleted_at,
+                   m.image_url, m.reply_to_id
             FROM dm_messages m
             JOIN dm_members dm ON dm.conversation_id = m.conversation_id
             WHERE m.id = ? AND dm.user_id = ? AND m.deleted_at IS NULL
