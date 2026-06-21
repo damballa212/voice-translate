@@ -112,7 +112,7 @@ def init():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             conversation_id INTEGER NOT NULL,
             sender_user_id INTEGER NOT NULL,
-            kind TEXT NOT NULL CHECK (kind IN ('text', 'voice')),
+            kind TEXT NOT NULL CHECK (kind IN ('text', 'voice', 'image')),
             body TEXT,
             voice_path TEXT,
             voice_mime TEXT,
@@ -149,6 +149,45 @@ def init():
                 c.execute(sql)
             except Exception:
                 pass
+
+        try:
+            row = c.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='dm_messages'"
+            ).fetchone()
+            if row and "'text', 'voice')" in (row["sql"] or "") and "'image'" not in (row["sql"] or ""):
+                c.executescript("""
+                    CREATE TABLE dm_messages_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        conversation_id INTEGER NOT NULL,
+                        sender_user_id INTEGER NOT NULL,
+                        kind TEXT NOT NULL CHECK (kind IN ('text', 'voice', 'image')),
+                        body TEXT,
+                        voice_path TEXT,
+                        voice_mime TEXT,
+                        voice_duration_ms INTEGER,
+                        voice_size_bytes INTEGER,
+                        created_at REAL NOT NULL,
+                        deleted_at REAL,
+                        translations_json TEXT NOT NULL DEFAULT '{}',
+                        transcript TEXT,
+                        image_url TEXT,
+                        reply_to_id INTEGER,
+                        FOREIGN KEY (conversation_id) REFERENCES dm_conversations(id) ON DELETE CASCADE,
+                        FOREIGN KEY (sender_user_id) REFERENCES users(id) ON DELETE CASCADE
+                    );
+                    INSERT INTO dm_messages_new
+                        SELECT id, conversation_id, sender_user_id, kind, body,
+                               voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
+                               created_at, deleted_at, translations_json, transcript,
+                               image_url, reply_to_id
+                        FROM dm_messages;
+                    DROP TABLE dm_messages;
+                    ALTER TABLE dm_messages_new RENAME TO dm_messages;
+                    CREATE INDEX IF NOT EXISTS idx_dm_messages_conversation
+                        ON dm_messages(conversation_id, created_at, id);
+                """)
+        except Exception:
+            pass
 
 
 # ============================================================
