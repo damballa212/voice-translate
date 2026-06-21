@@ -365,6 +365,8 @@ button{transition:transform var(--d-fast) var(--e-spring),background-color var(-
 .head-back:active,.head-act:active,.lang-tag:active,.lang-swap:active,.dock-act:active,button:active:not(:disabled){transform:scale(.96)}
 .head-title{min-width:0}
 #roomName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.chat-lang-select{height:34px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;outline:none}
+.chat-lang-select:hover{border-color:var(--accent)}
 .chat-translation{display:block;font-size:0.78rem;opacity:0.62;margin-top:2px;font-style:italic;line-height:1.3;word-break:break-word}
 .chat-bubble.out .chat-translation{opacity:0.75}
 .chat-transcript{display:block;font-size:0.78rem;opacity:0.68;margin-top:4px;line-height:1.3;word-break:break-word}

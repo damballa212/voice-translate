@@ -709,19 +709,26 @@ async def ws_endpoint(ws: WebSocket):
                     body = msg.get("body") or ""
                     members = db.dm_member_target_langs(conversation_id)
                     sender_id = user["id"]
+                    sender_member = next((m for m in members if m["user_id"] == sender_id), None)
+                    source_hint = sender_member.get("target_lang") if sender_member else None
                     target_langs = [
                         m["target_lang"] for m in members
                         if m["user_id"] != sender_id and m.get("target_lang")
                     ]
+                    log("dm", f"send_text conv={conversation_id} body={body!r:.40} members={[(m['user_id'], m['target_lang']) for m in members]} target_langs={target_langs}")
                     translations = {}
                     if target_langs:
                         try:
                             translations = await translate_for_members(
                                 body, target_langs,
+                                source_hint=source_hint,
                                 sender_name=user.get("nickname") or user.get("email"),
                             )
+                            log("dm", f"translated → {translations}")
                         except Exception as e:
                             err("dm", f"translate failed, sending without translation: {e}")
+                    else:
+                        log("dm", "no target_langs — skipping translation")
                     saved = db.dm_add_text_message(conversation_id, sender_id, body, translations)
                     _dm_broadcast(conversation_id, {
                         "type": "dm_message",

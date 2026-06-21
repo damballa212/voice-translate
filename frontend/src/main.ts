@@ -55,6 +55,7 @@ import {
   onChatInputKey,
   toggleChatVoiceNote,
   playDmVoice,
+  onChatLangChange,
 } from "./dm";
 import { enablePushNotifications, registerServiceWorker } from "./push";
 
@@ -101,6 +102,7 @@ Object.assign(window, {
   onChatInputKey,
   toggleChatVoiceNote,
   playDmVoice,
+  onChatLangChange,
   enablePushNotifications,
   __startDemo: startDemo,
 });

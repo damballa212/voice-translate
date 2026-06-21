@@ -146,7 +146,9 @@ export async function openChat(id: number): Promise<void> {
   $("chatAvatar").textContent = (conv.participant.nickname || conv.participant.email).charAt(0).toUpperCase();
   $("chatMessages").innerHTML = `<div class="record-empty">${escapeHtml(t("dm-loading"))}</div>`;
   show("viewChat");
-  const myLang = (activeConversation?.my_target_lang || config.target || "en");
+  const myLang = (conv.my_target_lang || config.target || "en");
+  const sel = $opt<HTMLSelectElement>("chatLangSelect");
+  if (sel) sel.value = myLang;
   send({ command: "dm_set_lang", conversation_id: id, target_lang: myLang });
   await loadMessages(id);
 }
@@ -348,4 +350,10 @@ export function toggleChatVoiceNote(): void {
 export function playDmVoice(messageId: number): void {
   const audio = new Audio(`/dm/voice/${messageId}`);
   audio.play().catch(() => toast(t("dm-voice-play-error")));
+}
+
+export function onChatLangChange(lang: string): void {
+  if (!activeConversation) return;
+  activeConversation.my_target_lang = lang;
+  send({ command: "dm_set_lang", conversation_id: activeConversation.id, target_lang: lang });
 }
