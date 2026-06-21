@@ -378,9 +378,9 @@ body{
 /* ============ images, reply, lightbox ============ */
 .attach-btn{width:36px;height:36px;border:0;background:none;color:#919191;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;border-radius:50%;transition:background .15s}
 .attach-btn:active{background:rgba(0,0,0,.06)}
-.chat-bubble.img-bubble{padding:3px;max-width:280px;overflow:hidden;position:relative;flex-wrap:nowrap;flex-direction:column}
+.chat-bubble.img-bubble{padding:3px;width:260px;max-width:70%;overflow:hidden;position:relative;flex-wrap:nowrap;flex-direction:column}
 .chat-bubble.img-bubble>.chat-body,.chat-bubble.img-bubble>.chat-translation,.chat-bubble.img-bubble>.chat-transcript{display:none}
-.chat-img{width:100%;border-radius:7px;cursor:pointer;display:block!important;object-fit:cover;max-height:360px;min-height:80px;min-width:180px}
+.chat-img{width:100%;border-radius:7px;cursor:pointer;display:block!important;object-fit:contain;max-height:400px;min-height:60px}
 .chat-bubble.img-bubble>.chat-time{position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,.55);color:#fff;padding:2px 6px;border-radius:6px;font-size:10px;opacity:1;z-index:1;margin:0}
 .chat-bubble.img-bubble .chat-tick{color:rgba(255,255,255,.9)}
 .reply-quote{padding:6px 10px;margin-bottom:4px;border-left:3px solid #06d755;background:rgba(0,0,0,.04);border-radius:4px;cursor:pointer;width:100%}
