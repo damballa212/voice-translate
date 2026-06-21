@@ -11,6 +11,7 @@ import { app } from "./state";
 import type { SoloTranscriptInput, SoloTranslationInput } from "./protocol";
 import { send } from "./ws";
 import { toast } from "./ui";
+import { t } from "./i18n";
 
 const TURN_GAP_MS = 1500;
 
@@ -56,7 +57,7 @@ export function handleSoloTranscript(m: SoloTranscriptInput): void {
     if (_soloTurn && (_soloTurn.src || _soloTurn.tgt)) flushSoloTurn();
     _soloTurn = newSoloTurn();
     _soloTurn.src = m.text;
-    _soloTurn.complete = true; // espera al translation final para el tgt
+    _soloTurn.complete = true;
     if (m.lang) _soloTurn.lang = m.lang;
     _soloTurn.lastTime = Date.now();
     scheduleSoloRotate();
@@ -92,8 +93,6 @@ export function handleSoloTranslation(m: SoloTranslationInput): void {
   renderSubtitles();
 }
 
-/* Estado de render de subtítulos — render incremental por carácter para evitar
-   el parpadeo de reconstruir innerHTML completo en cada frame. */
 const _capState = {
   renderedDoneCount: 0,
   currentText: "",
@@ -106,7 +105,6 @@ function renderSubtitles(): void {
   const el = $("subtitleText");
   el.style.display = "flex";
 
-  // 1. Cada turno completado "degrada" el .cap-current actual a .cap-old.
   const newDoneCount = _soloDoneTurns.length;
   if (newDoneCount > _capState.renderedDoneCount) {
     const cur = el.querySelector<HTMLElement>(".cap-current");
@@ -120,7 +118,6 @@ function renderSubtitles(): void {
     _capState.renderedDoneCount = newDoneCount;
   }
 
-  // 2. Texto del turno actual
   let currentText = "";
   let isPlaceholder = false;
   if (_soloTurn) {
@@ -169,7 +166,6 @@ function renderSubtitles(): void {
     _capState.currentText = "";
   }
 
-  // 3. Cursor parpadeante al final mientras se graba
   let cursor = el.querySelector<HTMLElement>(".subtitle-cursor");
   if (app.recording) {
     if (!cursor) {
@@ -185,7 +181,6 @@ function renderSubtitles(): void {
   c.scrollTop = c.scrollHeight;
 }
 
-/** Cierra el turno actual sin borrar el historial de subtítulos. */
 export function resetSoloBubbles(): void {
   if (_soloRotateTimer) {
     clearTimeout(_soloRotateTimer);
@@ -211,11 +206,11 @@ export function clearSoloHistory(): void {
 
 export function downloadCurrent(): void {
   if (app.demo) {
-    toast("Descarga disponible al desplegar tu servidor");
+    toast(t("solo-download-demo"));
     return;
   }
   if (!app.currentRecordingId) {
-    toast("No hay grabaciones");
+    toast(t("solo-no-recordings"));
     return;
   }
   window.open("/recordings/" + app.currentRecordingId + ".md", "_blank");

@@ -1,6 +1,6 @@
 /**
- * boot.ts — Inicialización: rellena selects de idioma, comprueba sesión y
- * arranca la vista correspondiente (auth / landing / demo).
+ * boot.ts — Inicialización: detecta idioma, traduce la UI estática, rellena
+ * selects de idioma, comprueba sesión y arranca la vista correspondiente.
  */
 import { $opt, app, config } from "./state";
 import { COMMON_LANGS } from "./languages";
@@ -9,9 +9,36 @@ import { onAuthSuccess } from "./auth";
 import { show } from "./nav";
 import { openJoinRoom } from "./panels";
 import { startDemo } from "./demo";
+import { t } from "./i18n";
+
+/** Translate all static HTML elements marked with data-i18n attributes. */
+function translateStaticHTML(): void {
+  document.title = t("page-title");
+
+  document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
+    const key = el.dataset.i18n!;
+    el.textContent = t(key);
+  });
+
+  document.querySelectorAll<HTMLElement>("[data-i18n-html]").forEach((el) => {
+    const key = el.dataset.i18nHtml!;
+    el.innerHTML = t(key);
+  });
+
+  document.querySelectorAll<HTMLInputElement>("[data-i18n-placeholder]").forEach((el) => {
+    const key = el.dataset.i18nPlaceholder!;
+    el.placeholder = t(key);
+  });
+
+  document.querySelectorAll<HTMLElement>("[data-i18n-title]").forEach((el) => {
+    const key = el.dataset.i18nTitle!;
+    el.title = t(key);
+  });
+}
 
 export async function init(): Promise<void> {
-  // Rellena los <select> de idioma.
+  translateStaticHTML();
+
   const opts = COMMON_LANGS.map(
     (l) => `<option value="${l.id}">${l.label}</option>`,
   ).join("");
@@ -29,7 +56,6 @@ export async function init(): Promise<void> {
     },
   );
 
-  // Sincroniza config al cambiar los selects de ajustes.
   (["setAsrLang", "setTargetLang"] as const).forEach((id) => {
     const el = $opt<HTMLSelectElement>(id);
     if (!el) return;
@@ -43,7 +69,6 @@ export async function init(): Promise<void> {
 
   updateLangDisplay();
 
-  // Comprueba sesión. En desarrollo sin backend → modo demo.
   try {
     const r = await fetch("/auth/me");
     if (r.ok) {
@@ -59,7 +84,6 @@ export async function init(): Promise<void> {
     else show("viewAuth");
   }
 
-  // ?room=XXX → abre el panel de unirse tras login.
   const params = new URLSearchParams(location.search);
   const roomCode = params.get("room");
   if (roomCode && app.currentUser) {

@@ -6,6 +6,7 @@ import { send } from "./ws";
 import { stopMic } from "./audio";
 import { refreshTrialStatus } from "./auth";
 import { updateLangDisplay } from "./langbar";
+import { t } from "./i18n";
 
 /** Transición animada entre vistas (.view). */
 export function show(viewId: string): void {
@@ -25,14 +26,14 @@ export function show(viewId: string): void {
 }
 
 export function backToLanding(): void {
-  if (app.recording) stopMic("Sesión cerrada");
+  if (app.recording) stopMic(t("nav-session-closed"));
   if (app.mode === "room") {
     send({ command: "leave_room" });
   }
   app.mode = "idle";
   app.roomState = null;
   show("viewLanding");
-  refreshTrialStatus(); // refresca el contador de prueba al volver
+  refreshTrialStatus();
 }
 
 export function enterSolo(): void {

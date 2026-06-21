@@ -15,6 +15,7 @@ import { send } from "./ws";
 import { hideBusyBanner, setMicTitle, showBusyBanner, toast } from "./ui";
 import { resetSoloBubbles } from "./solo";
 import { demoToggleMic } from "./demo";
+import { t } from "./i18n";
 
 export async function toggleMic(): Promise<void> {
   if (app.demo) {
@@ -59,7 +60,7 @@ export async function toggleMic(): Promise<void> {
     app.audioProcessor.connect(app.audioCtx.destination);
     app.audioProcessor.onaudioprocess = (e) => {
       if (!app.recording || !app.backendReady) return;
-      if (app.vadInstance && !app.vadGate) return; // VAD: no es voz → omitir
+      if (app.vadInstance && !app.vadGate) return;
       const inp = e.inputBuffer.getChannelData(0);
       let s = inp;
       if (actualRate !== TARGET_RATE && actualRate > 0) {
@@ -90,23 +91,23 @@ export async function toggleMic(): Promise<void> {
     app.backendReady = false;
     b?.classList.add("connecting");
     if (b) playMicBurst(b);
-    setMicTitle("⏳ Conectando...", true);
-    showBusyBanner("Conectando al servidor...");
+    setMicTitle(t("mic-connecting"), true);
+    showBusyBanner(t("busy-connecting-server"));
     startVAD();
   } catch (err) {
     console.error("[mic] error", err);
     cleanupMic();
-    toast((err as Error).message || "Micrófono no disponible");
+    toast((err as Error).message || t("toast-mic-unavailable"));
   }
 }
 
-export function stopMic(label = "Detenido"): void {
+export function stopMic(label?: string): void {
   cleanupMic();
   document.querySelectorAll<HTMLElement>(".mic").forEach((b) => {
     b.classList.remove("recording", "connecting");
   });
   hideBusyBanner();
-  setMicTitle(label);
+  setMicTitle(label ?? t("mic-stopped"));
   if (app.mode === "solo") send({ command: "stop" });
   else if (app.mode === "room") send({ command: "speak_stop" });
 }
@@ -128,7 +129,7 @@ function cleanupMic(): void {
     app.mic = null;
   }
   if (app.micStream) {
-    app.micStream.getTracks().forEach((t) => t.stop());
+    app.micStream.getTracks().forEach((t_track) => t_track.stop());
     app.micStream = null;
   }
   if (app.audioCtx) {
@@ -145,7 +146,7 @@ async function startVAD(): Promise<void> {
   if (app.vadInstance) return;
   if (!window.vad || !window.vad.MicVAD) {
     console.warn("[vad] library not loaded — passthrough");
-    toast("⚠ VAD no cargado — sigue usable");
+    toast(t("toast-vad-not-loaded"));
     app.vadInstance = null;
     app.vadGate = true;
     return;
@@ -153,7 +154,7 @@ async function startVAD(): Promise<void> {
   try {
     app.vadGate = true;
     app.vadSilentCount = 0;
-    toast("⏳ Cargando VAD...");
+    toast(t("toast-vad-loading"));
     const inst = await window.vad.MicVAD.new({
       baseAssetPath:
         "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/",
@@ -171,10 +172,10 @@ async function startVAD(): Promise<void> {
     });
     await inst.start();
     app.vadInstance = inst;
-    toast("✓ VAD listo");
+    toast(t("toast-vad-ready"));
   } catch (e) {
     console.error("[vad] init failed — passthrough", e);
-    toast("⚠ VAD falló — sigue usable");
+    toast(t("toast-vad-failed"));
     app.vadInstance = null;
     app.vadGate = true;
   }
@@ -219,7 +220,7 @@ export function onBackendReady(engLabel?: string): void {
     b.classList.add("recording");
   });
   hideBusyBanner();
-  setMicTitle(`${engLabel || ""} · Grabando`.trim(), false);
+  setMicTitle(`${engLabel || ""}${t("mic-recording-label")}`.trim(), false);
   startWaveViz();
 }
 

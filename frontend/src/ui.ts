@@ -3,27 +3,27 @@
  * micrófono, modal de prueba y splash de arranque.
  */
 import { $, $opt } from "./state";
+import { t } from "./i18n";
 
 /* ---------------- Toast ---------------- */
 let _toastTimer: number | undefined;
 let _toastHideTimer: number | undefined;
 
 export function toast(msg: string): void {
-  const t = $("toast");
-  t.textContent = msg;
-  t.classList.remove("hiding");
-  // Reinicia la animación si ya estaba visible (toasts encadenados)
-  if (t.classList.contains("show")) {
-    t.classList.remove("show");
-    void t.offsetWidth;
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.remove("hiding");
+  if (el.classList.contains("show")) {
+    el.classList.remove("show");
+    void el.offsetWidth;
   }
-  t.classList.add("show");
+  el.classList.add("show");
   clearTimeout(_toastTimer);
   clearTimeout(_toastHideTimer);
   _toastTimer = window.setTimeout(() => {
-    t.classList.add("hiding");
+    el.classList.add("hiding");
     _toastHideTimer = window.setTimeout(
-      () => t.classList.remove("show", "hiding"),
+      () => el.classList.remove("show", "hiding"),
       180,
     );
   }, 2400);
@@ -55,7 +55,10 @@ export function showTrialModal(used?: number, limit?: number): void {
   const el = $opt("trialModal");
   const cnt = $opt("trialCount");
   if (cnt && used != null && limit != null) {
-    cnt.textContent = `${used} / ${limit} usados`;
+    cnt.textContent = t("trial-count-template", {
+      used: String(used),
+      limit: String(limit),
+    });
   }
   if (el) {
     el.classList.remove("closing");
@@ -75,17 +78,14 @@ export function initSplash(): void {
   const SEEN = "splash-seen=1";
   const el = $opt("splash");
   if (!el) return;
-  // Visita repetida: quitar de inmediato.
   if (document.cookie.indexOf(SEEN) !== -1) {
     el.remove();
     return;
   }
-  // Primera visita: momento de marca de 1.2 s, luego fade-out.
   setTimeout(() => {
     el.classList.add("fade-out");
     setTimeout(() => {
       el.remove();
-      // Re-dispara la animación de entrada de la vista activa
       const active = document.querySelector<HTMLElement>(".view.active");
       if (active) {
         active.classList.remove("active");

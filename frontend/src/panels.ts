@@ -4,6 +4,7 @@
 import { $, $opt, config } from "./state";
 import { send } from "./ws";
 import { toast } from "./ui";
+import { t } from "./i18n";
 
 export function showPanel(id: string): void {
   document
@@ -30,8 +31,8 @@ export function openJoinRoom(): void {
 }
 
 export function doCreateRoom(): void {
-  const name = $<HTMLInputElement>("createName").value.trim() || "Sala";
-  const nick = $<HTMLInputElement>("createNick").value.trim() || "Yo";
+  const name = $<HTMLInputElement>("createName").value.trim() || t("panel-room-name-default");
+  const nick = $<HTMLInputElement>("createNick").value.trim() || t("panel-nick-default");
   const target = $<HTMLSelectElement>("createTarget").value || "ru";
   config.target = target;
   closeOverlay();
@@ -41,10 +42,10 @@ export function doCreateRoom(): void {
 export function doJoinRoom(): void {
   const code = $<HTMLInputElement>("joinCode").value.trim().toUpperCase();
   if (!code) {
-    toast("Ingresa el código");
+    toast(t("toast-enter-code"));
     return;
   }
-  const nick = $<HTMLInputElement>("joinNick").value.trim() || "Yo";
+  const nick = $<HTMLInputElement>("joinNick").value.trim() || t("panel-nick-default");
   const target = $<HTMLSelectElement>("joinTarget").value || "ru";
   config.target = target;
   closeOverlay();

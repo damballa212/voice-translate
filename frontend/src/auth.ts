@@ -5,6 +5,7 @@ import { $, $opt, app, escapeHtml } from "./state";
 import { show } from "./nav";
 import { connectWs } from "./ws";
 import { toast } from "./ui";
+import { t } from "./i18n";
 
 export function switchAuthTab(tab: string): void {
   const tabs = $opt("authTabs");
@@ -28,11 +29,11 @@ export async function doRegister(): Promise<void> {
   const nickname = $<HTMLInputElement>("regNick").value.trim();
   const pwd = $<HTMLInputElement>("regPwd").value;
   if (!email || !pwd) {
-    toast("Correo y contraseña son obligatorios");
+    toast(t("toast-email-password-required"));
     return;
   }
   if (pwd.length < 6) {
-    toast("Mínimo 6 caracteres");
+    toast(t("toast-min-6-chars"));
     return;
   }
   try {
@@ -43,15 +44,15 @@ export async function doRegister(): Promise<void> {
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
-      toast(e.detail || "Error en el registro");
+      toast(e.detail || t("toast-register-error"));
       return;
     }
     const data = await r.json();
     app.currentUser = data.user;
-    toast("Registro exitoso, bienvenido " + (data.user.nickname || data.user.email));
+    toast(t("toast-register-welcome") + (data.user.nickname || data.user.email));
     onAuthSuccess();
   } catch {
-    toast("Error de red");
+    toast(t("toast-network-error"));
   }
 }
 
@@ -59,7 +60,7 @@ export async function doLogin(): Promise<void> {
   const email = $<HTMLInputElement>("loginEmail").value.trim();
   const pwd = $<HTMLInputElement>("loginPwd").value;
   if (!email || !pwd) {
-    toast("Correo y contraseña son obligatorios");
+    toast(t("toast-email-password-required"));
     return;
   }
   try {
@@ -70,14 +71,14 @@ export async function doLogin(): Promise<void> {
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
-      toast(e.detail || "Error al iniciar sesión");
+      toast(e.detail || t("toast-login-error"));
       return;
     }
     const data = await r.json();
     app.currentUser = data.user;
     onAuthSuccess();
   } catch {
-    toast("Error de red");
+    toast(t("toast-network-error"));
   }
 }
 
@@ -94,7 +95,7 @@ export async function doLogout(): Promise<void> {
     app.ws = null;
   }
   show("viewAuth");
-  toast("Sesión cerrada");
+  toast(t("toast-logged-out"));
 }
 
 export function onAuthSuccess(): void {
@@ -111,9 +112,9 @@ export function renderUserBadge(): void {
   if (trial && trial.limit) {
     const remain = Math.max(0, trial.limit - trial.used);
     const cls = remain === 0 ? "trial-pill empty" : "trial-pill";
-    trialPill = `<span class="${cls}" title="Usos restantes">Prueba ${remain}/${trial.limit}</span>`;
+    trialPill = `<span class="${cls}" title="${t("user-badge-trial-title")}">${t("user-badge-trial")}${remain}/${trial.limit}</span>`;
   }
-  subEl.innerHTML = `Hola, <b>${escapeHtml(app.currentUser.nickname)}</b>${trialPill} · <a onclick="doLogout()" style="color:var(--orange);cursor:pointer;text-decoration:underline">Salir</a>`;
+  subEl.innerHTML = `${t("user-badge-hello")}<b>${escapeHtml(app.currentUser.nickname)}</b>${trialPill} · <a onclick="doLogout()" style="color:var(--orange);cursor:pointer;text-decoration:underline">${t("user-badge-logout")}</a>`;
 }
 
 export async function refreshTrialStatus(): Promise<void> {

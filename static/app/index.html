@@ -10,489 +10,283 @@
     <!-- VAD (detección de voz) — expone window.ort / window.vad -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js"></script>
-    <script type="module" crossorigin src="/app/assets/index-BP5GQMlO.js"></script>
+    <script type="module" crossorigin src="/app/assets/index-BDZx7-a5.js"></script>
     <link rel="stylesheet" crossorigin href="/app/assets/index-H_pBVKar.css">
   </head>
   <body>
-    <!-- Splash de arranque (controlado por JS) -->
     <div id="splash">
       <div class="logo">🎙</div>
-      <div class="title">Traductor en Vivo</div>
-      <div class="subtitle">Realtime Voice Translator</div>
+      <div class="title" data-i18n="splash-title">Traductor en Vivo</div>
+      <div class="subtitle" data-i18n="splash-subtitle">Realtime Voice Translator</div>
       <div class="loader"></div>
     </div>
     <div class="app">
-      <!-- ============================================================
-       AUTH VIEW (login / registro)
-       ============================================================ -->
+      <!-- AUTH VIEW -->
       <div class="view active" id="viewAuth">
         <div class="hero" style="padding: 64px 28px 16px">
-          <h1
-            style="
-              font-size: 36px;
-              font-weight: 700;
-              letter-spacing: -0.025em;
-              line-height: 1.05;
-            "
-          >
-            Traductor <span class="hand">en Vivo</span>
+          <h1 style="font-size:36px;font-weight:700;letter-spacing:-0.025em;line-height:1.05">
+            <span data-i18n="auth-title">Traductor</span> <span class="hand" data-i18n="auth-title-accent">en Vivo</span>
           </h1>
-          <div
-            class="sub"
-            style="
-              margin-top: 8px;
-              font-size: 13px;
-              color: var(--ink-soft);
-              font-weight: 500;
-            "
-          >
+          <div class="sub" style="margin-top:8px;font-size:13px;color:var(--ink-soft);font-weight:500" data-i18n="auth-subtitle">
             Inicia sesión para guardar grabaciones
           </div>
         </div>
-        <div
-          style="
-            padding: 24px 22px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-          "
-        >
-          <!-- Tabs: iniciar sesión / registrarse -->
-          <div
-            id="authTabs"
-            style="
-              display: flex;
-              gap: 0;
-              border-bottom: 1px solid var(--line);
-              margin-bottom: 18px;
-              position: relative;
-            "
-          >
-            <button
-              type="button"
-              class="auth-tab active"
-              data-tab="login"
-              onclick="switchAuthTab('login')"
-            >
-              Iniciar sesión
-            </button>
-            <button
-              type="button"
-              class="auth-tab"
-              data-tab="register"
-              onclick="switchAuthTab('register')"
-            >
-              Registrarse
-            </button>
+        <div style="padding:24px 22px;flex:1;display:flex;flex-direction:column">
+          <div id="authTabs" style="display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;position:relative">
+            <button type="button" class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')" data-i18n="auth-tab-login">Iniciar sesión</button>
+            <button type="button" class="auth-tab" data-tab="register" onclick="switchAuthTab('register')" data-i18n="auth-tab-register">Registrarse</button>
             <div class="auth-tab-underline"></div>
           </div>
-
-          <!-- Login form -->
           <div id="authLoginPane">
             <div class="form-group">
-              <label>Correo</label>
-              <input
-                type="email"
-                id="loginEmail"
-                placeholder="you@example.com"
-                autocomplete="username"
-                onkeydown="if (event.key === 'Enter') doLogin();"
-              />
+              <label data-i18n="auth-label-email">Correo</label>
+              <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="username" onkeydown="if (event.key === 'Enter') doLogin();" />
             </div>
             <div class="form-group">
-              <label>Contraseña</label>
-              <input
-                type="password"
-                id="loginPwd"
-                placeholder="Introduce tu contraseña"
-                autocomplete="current-password"
-                onkeydown="if (event.key === 'Enter') doLogin();"
-              />
+              <label data-i18n="auth-label-password">Contraseña</label>
+              <input type="password" id="loginPwd" data-i18n-placeholder="auth-placeholder-password" placeholder="Introduce tu contraseña" autocomplete="current-password" onkeydown="if (event.key === 'Enter') doLogin();" />
             </div>
-            <button class="primary auth-submit" onclick="doLogin()">
-              Iniciar sesión
-            </button>
+            <button class="primary auth-submit" onclick="doLogin()" data-i18n="auth-btn-login">Iniciar sesión</button>
           </div>
-
-          <!-- Register form -->
           <div id="authRegisterPane" style="display: none">
             <div class="form-group">
-              <label>Correo</label>
-              <input
-                type="email"
-                id="regEmail"
-                placeholder="you@example.com"
-                autocomplete="username"
-                onkeydown="if (event.key === 'Enter') doRegister();"
-              />
+              <label data-i18n="auth-label-email">Correo</label>
+              <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="username" onkeydown="if (event.key === 'Enter') doRegister();" />
             </div>
             <div class="form-group">
-              <label>Apodo</label>
-              <input
-                type="text"
-                id="regNick"
-                placeholder="Dejar vacío usará el prefijo del correo"
-                maxlength="20"
-                onkeydown="if (event.key === 'Enter') doRegister();"
-              />
+              <label data-i18n="auth-label-nickname">Apodo</label>
+              <input type="text" id="regNick" data-i18n-placeholder="auth-placeholder-nickname" placeholder="Dejar vacío usará el prefijo del correo" maxlength="20" onkeydown="if (event.key === 'Enter') doRegister();" />
             </div>
             <div class="form-group">
-              <label>Contraseña (≥ 6 caracteres)</label>
-              <input
-                type="password"
-                id="regPwd"
-                placeholder="Establece una contraseña"
-                autocomplete="new-password"
-                onkeydown="if (event.key === 'Enter') doRegister();"
-              />
+              <label data-i18n="auth-label-password-register">Contraseña (≥ 6 caracteres)</label>
+              <input type="password" id="regPwd" data-i18n-placeholder="auth-placeholder-password-register" placeholder="Establece una contraseña" autocomplete="new-password" onkeydown="if (event.key === 'Enter') doRegister();" />
             </div>
-            <button class="primary auth-submit" onclick="doRegister()">
-              Registrarse e iniciar sesión
-            </button>
+            <button class="primary auth-submit" onclick="doRegister()" data-i18n="auth-btn-register">Registrarse e iniciar sesión</button>
           </div>
         </div>
       </div>
 
-      <!-- ============================================================
-       LANDING VIEW
-       ============================================================ -->
+      <!-- LANDING VIEW -->
       <div class="view landing" id="viewLanding">
         <div class="hero">
-          <h1>Traductor <span class="hand">en Vivo</span></h1>
-          <div class="sub">Que <b>cada voz</b> sea comprendida · Traducción individual / grupal en tiempo real</div>
+          <h1><span data-i18n="landing-title">Traductor</span> <span class="hand" data-i18n="landing-title-accent">en Vivo</span></h1>
+          <div class="sub" data-i18n-html="landing-subtitle-html">Que <b>cada voz</b> sea comprendida · Traducción individual / grupal en tiempo real</div>
         </div>
         <div class="cards">
           <button class="card solo" onclick="enterSolo()">
             <div class="ic">🎙</div>
             <div class="body">
-              <div class="ttl">Traducción individual</div>
-              <div class="desc">Conversación en otro idioma</div>
+              <div class="ttl" data-i18n="landing-card-solo-title">Traducción individual</div>
+              <div class="desc" data-i18n="landing-card-solo-desc">Conversación en otro idioma</div>
             </div>
             <div class="arr">→</div>
           </button>
           <button class="card create" onclick="openCreateRoom()">
             <div class="ic">＋</div>
             <div class="body">
-              <div class="ttl">Crear sala</div>
-              <div class="desc">Crea una sala e invita a otros</div>
+              <div class="ttl" data-i18n="landing-card-create-title">Crear sala</div>
+              <div class="desc" data-i18n="landing-card-create-desc">Crea una sala e invita a otros</div>
             </div>
             <div class="arr">→</div>
           </button>
           <button class="card join" onclick="openJoinRoom()">
             <div class="ic">⌬</div>
             <div class="body">
-              <div class="ttl">Unirse a sala</div>
-              <div class="desc">Ingresa el código de invitación</div>
+              <div class="ttl" data-i18n="landing-card-join-title">Unirse a sala</div>
+              <div class="desc" data-i18n="landing-card-join-desc">Ingresa el código de invitación</div>
             </div>
             <div class="arr">→</div>
           </button>
         </div>
-        <div class="footer">
-          VOICE TRANSLATE · v1.0 · OPENAI
-        </div>
+        <div class="footer" data-i18n="footer-text">VOICE TRANSLATE · v1.0 · OPENAI</div>
       </div>
 
-      <!-- ============================================================
-       SOLO VIEW
-       ============================================================ -->
+      <!-- SOLO VIEW -->
       <div class="view" id="viewSolo">
         <div class="head">
           <button class="head-back" onclick="backToLanding()">‹</button>
           <div class="head-info">
-            <div class="head-title"><span class="emoji">🎙</span>Traducción individual</div>
+            <div class="head-title"><span class="emoji">🎙</span><span data-i18n="solo-header-title">Traducción individual</span></div>
             <div class="head-meta" id="soloMeta">
-              <span class="live-dot"></span>Listo
+              <span class="live-dot"></span><span data-i18n="status-ready">Listo</span>
             </div>
           </div>
           <button class="head-act" onclick="openSettings()">⚙</button>
         </div>
-
         <div class="lang-bar">
-          <div
-            class="lang-tag active"
-            id="srcLang"
-            onclick="openLangPicker('src')"
-          >
+          <div class="lang-tag active" id="srcLang" onclick="openLangPicker('src')">
             <span class="flag" id="srcFlag">🌐</span>
-            <span id="srcLabel">Detectar idioma</span>
+            <span id="srcLabel" data-i18n="solo-src-label-default">Detectar idioma</span>
             <span style="color: var(--dim); font-size: 11px">▾</span>
           </div>
           <button class="lang-swap" onclick="swapLangs()">⇄</button>
           <div class="lang-tag" id="tgtLang" onclick="openLangPicker('tgt')">
-            <span class="flag" id="tgtFlag">🇨🇳</span>
-            <span id="tgtLabel">Ruso</span>
+            <span class="flag" id="tgtFlag">🇷🇺</span>
+            <span id="tgtLabel" data-i18n="solo-tgt-label-default">Ruso</span>
             <span style="color: var(--dim); font-size: 11px">▾</span>
           </div>
         </div>
-
         <div class="transcript" id="soloTranscript">
           <div class="empty-state" id="soloEmpty">
             <div class="big">🎙</div>
-            Pulsa el micrófono abajo<br />Habla en cualquier idioma, traducción en vivo
+            <span data-i18n="solo-empty-line1">Pulsa el micrófono abajo</span><br /><span data-i18n="solo-empty-line2">Habla en cualquier idioma, traducción en vivo</span>
           </div>
-          <div
-            class="subtitle-text"
-            id="subtitleText"
-            style="display: none"
-          ></div>
+          <div class="subtitle-text" id="subtitleText" style="display: none"></div>
         </div>
-
         <div class="wave-viz" id="waveSolo"></div>
         <div class="dock">
           <button class="mic" id="micSolo" onclick="toggleMic()">
-            <svg viewBox="0 0 24 24">
-              <path
-                d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"
-              />
-            </svg>
+            <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
           </button>
           <div class="mic-info">
-            <div class="ttl" id="micSoloTitle">Pulsa para empezar</div>
-            <div class="meta" id="micSoloMeta">Listo</div>
+            <div class="ttl" id="micSoloTitle" data-i18n="mic-solo-title-default">Pulsa para empezar</div>
+            <div class="meta" id="micSoloMeta" data-i18n="status-ready">Listo</div>
           </div>
-          <button
-            class="dock-act"
-            onclick="downloadCurrent()"
-            title="Descargar grabación"
-          >
-            ↓
-          </button>
-          <button class="dock-act" onclick="openHistory()" title="Grabaciones">
-            📜
-          </button>
+          <button class="dock-act" onclick="downloadCurrent()" data-i18n-title="btn-download-title" title="Descargar grabación">↓</button>
+          <button class="dock-act" onclick="openHistory()" data-i18n-title="btn-history-title" title="Grabaciones">📜</button>
         </div>
       </div>
 
-      <!-- ============================================================
-       ROOM VIEW
-       ============================================================ -->
+      <!-- ROOM VIEW -->
       <div class="view" id="viewRoom">
         <div class="head">
           <button class="head-back" onclick="leaveRoom()">‹</button>
           <div class="head-info">
             <div class="head-title">
-              <span class="emoji">📓</span><span id="roomName">Sala</span>
+              <span class="emoji">📓</span><span id="roomName" data-i18n="room-name-default">Sala</span>
             </div>
             <div class="head-meta" id="roomMeta">
               <span class="live-dot"></span>
               <span id="roomMembersCount">0</span> ·
-              <span class="code" id="roomCode" onclick="copyRoomCode()"
-                >XXXXXX</span
-              >
-              · Escucho <b id="roomMyTarget">Ruso</b>
+              <span class="code" id="roomCode" onclick="copyRoomCode()">XXXXXX</span>
+              · <span data-i18n="room-listen-label">Escucho</span> <b id="roomMyTarget" data-i18n="room-tgt-default">Ruso</b>
             </div>
           </div>
           <button class="head-act" onclick="openSettings()">⚙</button>
         </div>
-
         <div class="members" id="roomMembers"></div>
-
         <div class="stream" id="roomStream">
           <div class="empty-state">
             <div class="big">💬</div>
-            Sala lista<br />Pulsa el micrófono para hablar
+            <span data-i18n="room-empty-line1">Sala lista</span><br /><span data-i18n="room-empty-line2">Pulsa el micrófono para hablar</span>
           </div>
         </div>
-
         <div class="wave-viz" id="waveRoom"></div>
         <div class="dock">
           <button class="mic" id="micRoom" onclick="toggleMic()">
-            <svg viewBox="0 0 24 24">
-              <path
-                d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"
-              />
-            </svg>
+            <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
           </button>
           <div class="mic-info">
-            <div class="ttl" id="micRoomTitle">Pulsa para hablar</div>
-            <div class="meta" id="micRoomMeta">Listo</div>
+            <div class="ttl" id="micRoomTitle" data-i18n="mic-room-title-default">Pulsa para hablar</div>
+            <div class="meta" id="micRoomMeta" data-i18n="status-ready">Listo</div>
           </div>
-          <button class="dock-act" onclick="copyTranscript()" title="Copiar todo">
-            📋
-          </button>
-          <button class="dock-act" onclick="exportRoom()" title="Exportar Markdown">
-            ↓
-          </button>
+          <button class="dock-act" onclick="copyTranscript()" data-i18n-title="btn-copy-title" title="Copiar todo">📋</button>
+          <button class="dock-act" onclick="exportRoom()" data-i18n-title="btn-export-title" title="Exportar Markdown">↓</button>
         </div>
       </div>
     </div>
 
-    <!-- ============================================================
-     SETTINGS overlay
-     ============================================================ -->
-    <div
-      class="overlay"
-      id="overlay"
-      onclick="if (event.target === this) closeOverlay();"
-    >
+    <!-- SETTINGS overlay -->
+    <div class="overlay" id="overlay" onclick="if (event.target === this) closeOverlay();">
       <div class="panel" id="panelSettings" style="display: none">
         <div class="grip"></div>
-        <h3>Ajustes</h3>
+        <h3 data-i18n="settings-title">Ajustes</h3>
         <div class="form-group">
-          <label>Idioma de entrada</label>
+          <label data-i18n="settings-input-lang">Idioma de entrada</label>
           <select id="setAsrLang"></select>
         </div>
         <div class="form-group">
-          <label>Traducir a</label>
+          <label data-i18n="settings-target-lang">Traducir a</label>
           <select id="setTargetLang"></select>
         </div>
         <div class="toggle-row">
-          <span>Activar traducción</span>
-          <div
-            class="toggle on"
-            id="toggleTranslate"
-            onclick="
-              this.classList.toggle('on');
-              pushConfig();
-            "
-          ></div>
+          <span data-i18n="settings-toggle-translate">Activar traducción</span>
+          <div class="toggle on" id="toggleTranslate" onclick="this.classList.toggle('on'); pushConfig();"></div>
         </div>
         <div class="toggle-row">
-          <span>Voz (TTS)</span>
-          <div
-            class="toggle"
-            id="toggleTts"
-            onclick="
-              this.classList.toggle('on');
-              pushConfig();
-            "
-          ></div>
+          <span data-i18n="settings-toggle-tts">Voz (TTS)</span>
+          <div class="toggle" id="toggleTts" onclick="this.classList.toggle('on'); pushConfig();"></div>
         </div>
       </div>
 
-      <!-- Create Room panel -->
       <div class="panel" id="panelCreate" style="display: none">
         <div class="grip"></div>
-        <h3>Crear sala</h3>
+        <h3 data-i18n="create-room-title">Crear sala</h3>
         <div class="form-group">
-          <label>Nombre de la sala</label>
-          <input type="text" id="createName" placeholder="Ej: Reunión semanal" />
+          <label data-i18n="create-room-name-label">Nombre de la sala</label>
+          <input type="text" id="createName" data-i18n-placeholder="create-room-name-placeholder" placeholder="Ej: Reunión semanal" />
         </div>
         <div class="form-group">
-          <label>Tu apodo</label>
-          <input
-            type="text"
-            id="createNick"
-            placeholder="Tu nombre"
-            maxlength="20"
-          />
+          <label data-i18n="create-room-nick-label">Tu apodo</label>
+          <input type="text" id="createNick" data-i18n-placeholder="create-room-nick-placeholder" placeholder="Tu nombre" maxlength="20" />
         </div>
         <div class="form-group">
-          <label>Idioma que escuchas</label>
+          <label data-i18n="create-room-target-label">Idioma que escuchas</label>
           <select id="createTarget"></select>
         </div>
-        <button class="primary" onclick="doCreateRoom()">Crear</button>
+        <button class="primary" onclick="doCreateRoom()" data-i18n="create-room-btn">Crear</button>
       </div>
 
-      <!-- Lang picker panel -->
       <div class="panel" id="panelLang" style="display: none">
         <div class="grip"></div>
-        <h3 id="langPickerTitle">Seleccionar idioma</h3>
-        <input
-          type="text"
-          id="langSearchInput"
-          placeholder="Buscar idioma..."
-          style="
-            width: 100%;
-            padding: 11px 14px;
-            background: white;
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            color: var(--ink);
-            font-size: 14px;
-            outline: none;
-            font-family: inherit;
-            margin-bottom: 14px;
-          "
-          oninput="renderLangList()"
-        />
+        <h3 id="langPickerTitle" data-i18n="lang-picker-title">Seleccionar idioma</h3>
+        <input type="text" id="langSearchInput" data-i18n-placeholder="lang-picker-search-placeholder" placeholder="Buscar idioma..." style="width:100%;padding:11px 14px;background:white;border:1px solid var(--line);border-radius:10px;color:var(--ink);font-size:14px;outline:none;font-family:inherit;margin-bottom:14px" oninput="renderLangList()" />
         <div id="langList" style="max-height: 55dvh; overflow-y: auto"></div>
       </div>
 
-      <!-- History panel -->
       <div class="panel" id="panelHistory" style="display: none">
         <div class="grip"></div>
-        <h3>📜 Grabaciones</h3>
-        <div id="historyList"><div class="record-empty">Cargando…</div></div>
+        <h3 data-i18n="history-title">📜 Grabaciones</h3>
+        <div id="historyList"><div class="record-empty" data-i18n="history-loading">Cargando…</div></div>
       </div>
 
-      <!-- Join Room panel -->
       <div class="panel" id="panelJoin" style="display: none">
         <div class="grip"></div>
-        <h3>Unirse a sala</h3>
+        <h3 data-i18n="join-room-title">Unirse a sala</h3>
         <div class="form-group">
-          <label>Código</label>
-          <input
-            type="text"
-            id="joinCode"
-            placeholder="Código de 6 caracteres"
-            maxlength="8"
-            style="
-              text-transform: uppercase;
-              letter-spacing: 0.2em;
-              text-align: center;
-              font-family: var(--mono);
-            "
-          />
+          <label data-i18n="join-room-code-label">Código</label>
+          <input type="text" id="joinCode" data-i18n-placeholder="join-room-code-placeholder" placeholder="Código de 6 caracteres" maxlength="8" style="text-transform:uppercase;letter-spacing:0.2em;text-align:center;font-family:var(--mono)" />
         </div>
         <div class="form-group">
-          <label>Tu apodo</label>
-          <input
-            type="text"
-            id="joinNick"
-            placeholder="Tu nombre"
-            maxlength="20"
-          />
+          <label data-i18n="join-room-nick-label">Tu apodo</label>
+          <input type="text" id="joinNick" data-i18n-placeholder="join-room-nick-placeholder" placeholder="Tu nombre" maxlength="20" />
         </div>
         <div class="form-group">
-          <label>Idioma que escuchas</label>
+          <label data-i18n="join-room-target-label">Idioma que escuchas</label>
           <select id="joinTarget"></select>
         </div>
-        <button class="primary" onclick="doJoinRoom()">Unirse</button>
+        <button class="primary" onclick="doJoinRoom()" data-i18n="join-room-btn">Unirse</button>
       </div>
     </div>
 
-    <!-- Modal de límite de prueba -->
+    <!-- Trial modal -->
     <div id="trialModal" role="dialog" aria-labelledby="trialTitle">
       <div class="card">
         <div class="icon">⏰</div>
-        <h2 id="trialTitle">Prueba gratuita agotada</h2>
+        <h2 id="trialTitle" data-i18n="trial-title">Prueba gratuita agotada</h2>
         <div class="desc">
-          Gracias por probar el Traductor en Vivo<br />
-          Este es un <strong style="color: var(--ink)">proyecto open source</strong>, puedes desplegarlo por tu cuenta, completamente gratis
+          <span data-i18n="trial-desc">Gracias por probar el Traductor en Vivo</span><br />
+          <span data-i18n="trial-desc-2">Este es un proyecto open source, puedes desplegarlo por tu cuenta, completamente gratis</span>
         </div>
-        <div class="count" id="trialCount">3 / 3 usados</div>
-        <a
-          class="github-cta"
-          href="https://github.com/Timelk/realtime-translate"
-          target="_blank"
-          rel="noopener"
-        >
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path
-              fill="currentColor"
-              d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2c-3.21.7-3.89-1.55-3.89-1.55-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.7 1.25 3.36.95.1-.74.4-1.25.73-1.54-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.45.11-3.03 0 0 .96-.31 3.15 1.18a10.94 10.94 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.58.23 2.74.11 3.03.74.81 1.18 1.84 1.18 3.1 0 4.43-2.7 5.41-5.28 5.7.41.36.78 1.06.78 2.13v3.16c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .5z"
-            />
-          </svg>
+        <div class="count" id="trialCount">3 / 3</div>
+        <a class="github-cta" href="https://github.com/damballa212/voice-translate" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2c-3.21.7-3.89-1.55-3.89-1.55-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.7 1.25 3.36.95.1-.74.4-1.25.73-1.54-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.45.11-3.03 0 0 .96-.31 3.15 1.18a10.94 10.94 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.58.23 2.74.11 3.03.74.81 1.18 1.84 1.18 3.1 0 4.43-2.7 5.41-5.28 5.7.41.36.78 1.06.78 2.13v3.16c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
           <div class="github-cta-text">
-            <div class="t">Desplegar en GitHub</div>
-            <div class="s">Timelk/realtime-translate · MIT · Docker</div>
+            <div class="t" data-i18n="trial-github-title">Desplegar en GitHub</div>
+            <div class="s" data-i18n="trial-github-sub">voice-translate · MIT · Docker</div>
           </div>
           <div class="github-cta-arrow">→</div>
         </a>
         <div class="actions">
-          <button class="ghost" onclick="closeTrialModal()">Entendido</button>
-          <button class="primary" onclick="closeTrialModal(); openHistory();">
-            Ver grabaciones
-          </button>
+          <button class="ghost" onclick="closeTrialModal()" data-i18n="trial-btn-dismiss">Entendido</button>
+          <button class="primary" onclick="closeTrialModal(); openHistory();" data-i18n="trial-btn-history">Ver grabaciones</button>
         </div>
       </div>
     </div>
 
     <div class="toast" id="toast"></div>
     <div id="busyBanner">
-      <span class="spin"></span
-      ><span id="busyBannerText">Conectando, espera...</span>
+      <span class="spin"></span><span id="busyBannerText" data-i18n="busy-banner-default">Conectando, espera...</span>
     </div>
 
   </body>

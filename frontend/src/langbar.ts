@@ -6,13 +6,14 @@ import { $, $opt, config } from "./state";
 import { COMMON_LANGS, langById } from "./languages";
 import { send } from "./ws";
 import { showPanel, closeOverlay } from "./panels";
+import { t } from "./i18n";
 
 let _langPickerWhich: "src" | "tgt" | null = null;
 
 export function openLangPicker(which: "src" | "tgt"): void {
   _langPickerWhich = which;
   $("langPickerTitle").textContent =
-    which === "src" ? "🎤 Idioma de entrada" : "🌐 Traducir a";
+    which === "src" ? t("langbar-picker-src") : t("langbar-picker-tgt");
   $<HTMLInputElement>("langSearchInput").value = "";
   renderLangList();
   showPanel("panelLang");
@@ -43,7 +44,7 @@ export function renderLangList(): void {
 
   const totalForEngine = COMMON_LANGS.filter(matches).length;
   $("langPickerTitle").innerHTML =
-    (which === "src" ? "🎤 Idioma de entrada" : "🌐 Traducir a") +
+    (which === "src" ? t("langbar-picker-src") : t("langbar-picker-tgt")) +
     ` <span style="font-family:var(--mono);font-size:11px;color:var(--dim);font-weight:400">⚡ OpenAI · ${totalForEngine}</span>`;
 
   const html = items
@@ -63,7 +64,7 @@ export function renderLangList(): void {
 
   $("langList").innerHTML =
     html ||
-    '<div style="text-align:center;padding:24px;color:var(--dim)">No se encontró el idioma</div>';
+    `<div style="text-align:center;padding:24px;color:var(--dim)">${t("langbar-no-match")}</div>`;
 }
 
 export function selectLang(code: string): void {
@@ -75,9 +76,9 @@ export function selectLang(code: string): void {
 }
 
 export function swapLangs(): void {
-  const t = config.lang;
+  const tmp = config.lang;
   config.lang = config.target === "ru" ? "en" : config.target;
-  config.target = t === "auto" ? "ru" : t;
+  config.target = tmp === "auto" ? "ru" : tmp;
   updateLangDisplay();
   pushConfig();
 }

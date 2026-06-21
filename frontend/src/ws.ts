@@ -1,8 +1,5 @@
 /**
  * ws.ts — Conexión WebSocket y enrutado de mensajes del servidor.
- *
- * El contrato con el backend se mantiene intacto: se conecta a `/ws`, envía
- * comandos `{ command: ... }` y recibe mensajes `{ type: ... }`.
  */
 import { app } from "./state";
 import type { ClientCommand, ServerMessage } from "./protocol";
@@ -22,6 +19,7 @@ import {
 import { onBackendReady, playAudio, stopMic } from "./audio";
 import { setMicTitle, showTrialModal, toast } from "./ui";
 import { backToLanding } from "./nav";
+import { t } from "./i18n";
 
 export function connectWs(): void {
   if (app.demo) {
@@ -34,7 +32,7 @@ export function connectWs(): void {
   ws.onopen = () => console.log("[ws] open");
   ws.onclose = () => {
     console.log("[ws] close, reconnect in 2s");
-    if (app.recording) stopMic("Conexión perdida");
+    if (app.recording) stopMic(t("ws-mic-stop-connection"));
     setTimeout(connectWs, 2000);
   };
   ws.onerror = (e) => console.error("[ws] error", e);
@@ -60,7 +58,7 @@ export function handleMessage(m: ServerMessage): void {
       if (m.recording_id) app.currentRecordingId = m.recording_id;
       break;
     case "ready":
-      onBackendReady("⚡ OpenAI");
+      onBackendReady(t("ws-ready-engine"));
       if (m.recording_id) app.currentRecordingId = m.recording_id;
       break;
     case "transcript":
@@ -73,17 +71,17 @@ export function handleMessage(m: ServerMessage): void {
       playAudio(m.data, m.sample_rate);
       break;
     case "stopped":
-      setMicTitle("Detenido");
+      setMicTitle(t("ws-stopped"));
       break;
     case "config_updated":
       break;
     case "error":
       if (m.code === "trial_limit") {
-        if (app.recording) stopMic("Prueba gratuita agotada");
+        if (app.recording) stopMic(t("ws-trial-exhausted"));
         showTrialModal(m.used, m.limit);
       } else {
-        toast(m.message || "Error");
-        if (app.recording) stopMic("Error");
+        toast(m.message || t("ws-error-generic"));
+        if (app.recording) stopMic(t("ws-error-generic"));
       }
       break;
     case "room_joined":
@@ -105,7 +103,7 @@ export function handleMessage(m: ServerMessage): void {
       onSpeakingState(m);
       break;
     case "room_closed":
-      toast("La sala ha terminado");
+      toast(t("ws-room-closed"));
       backToLanding();
       break;
   }

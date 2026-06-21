@@ -12,13 +12,14 @@ import type {
 import { langById } from "./languages";
 import { show } from "./nav";
 import { toast } from "./ui";
+import { t } from "./i18n";
 
 const roomTurns = new Map<string, HTMLElement>();
 
 export function onRoomJoined(m: RoomJoinedInput): void {
   app.roomState = {
     code: m.code,
-    name: m.room_name || "Sala",
+    name: m.room_name || t("room-name-default"),
     members: m.members,
     you: m.you,
     myTarget: m.your_target || "ru",
@@ -29,17 +30,17 @@ export function onRoomJoined(m: RoomJoinedInput): void {
   $("roomMyTarget").textContent = lbl ? lbl.label : app.roomState.myTarget;
   renderMembers();
   $("roomStream").innerHTML =
-    '<div class="empty-state"><div class="big">💬</div>Sala lista<br>Pulsa el micrófono para hablar</div>';
+    `<div class="empty-state"><div class="big">💬</div>${t("room-empty-state-html")}</div>`;
   app.mode = "room";
   show("viewRoom");
-  toast(`Conectado · Código ${m.code}`);
+  toast(`${t("toast-room-connected")}${m.code}`);
 }
 
 export function onMemberJoined(member: Member): void {
   if (!app.roomState) return;
   app.roomState.members.push(member);
   renderMembers();
-  toast(`${member.name} se unió`);
+  toast(`${member.name}${t("toast-member-joined")}`);
 }
 
 export function onMemberLeft(id: string): void {
@@ -47,7 +48,7 @@ export function onMemberLeft(id: string): void {
   const left = app.roomState.members.find((x) => x.id === id);
   app.roomState.members = app.roomState.members.filter((x) => x.id !== id);
   renderMembers();
-  if (left) toast(`${left.name} salió`);
+  if (left) toast(`${left.name}${t("toast-member-left")}`);
 }
 
 export function onSpeakingState(m: SpeakingInput): void {
@@ -67,11 +68,11 @@ function renderMembers(): void {
   for (const m of rs.members) {
     const cls = m.id === rs.you ? "me" : "c" + (m.color ?? 0);
     const initial =
-      m.id === rs.you ? "Yo" : (m.name || "?").charAt(0).toUpperCase();
+      m.id === rs.you ? t("room-member-you") : (m.name || "?").charAt(0).toUpperCase();
     html += `<div class="av ${cls}" data-member="${escapeHtml(m.id)}" title="${escapeHtml(m.name)}">${escapeHtml(initial)}</div>`;
   }
   html += `<span class="who" id="memberWho">${escapeHtml(rs.members.map((x) => x.name).join(" · "))}</span>`;
-  html += `<button class="invite" onclick="copyRoomCode()">+ Invitar</button>`;
+  html += `<button class="invite" onclick="copyRoomCode()">${t("room-invite-btn")}</button>`;
   el.innerHTML = html;
 }
 
@@ -79,7 +80,7 @@ export function copyRoomCode(): void {
   const rs = app.roomState;
   if (!rs) return;
   navigator.clipboard?.writeText(rs.code).catch(() => {});
-  toast(`Código ${rs.code} copiado`);
+  toast(t("toast-code-copied", { code: rs.code }));
 }
 
 export function onRoomMessage(m: RoomMessageInput): void {
@@ -133,27 +134,26 @@ function createTurn(m: RoomMessageInput | RoomTranslationInput): HTMLElement {
   return turn;
 }
 
-/** Copia todo el flujo traducido de la sala al portapapeles. */
 export function copyTranscript(): void {
   const stream = $opt("roomStream");
   if (!stream) return;
   const lines: string[] = [];
-  stream.querySelectorAll<HTMLElement>(".turn").forEach((t) => {
-    const name = t.querySelector(".name")?.textContent?.trim() || "";
-    const tgt = t.querySelector(".tgt-text")?.textContent?.trim() || "";
+  stream.querySelectorAll<HTMLElement>(".turn").forEach((t_el) => {
+    const name = t_el.querySelector(".name")?.textContent?.trim() || "";
+    const tgt = t_el.querySelector(".tgt-text")?.textContent?.trim() || "";
     if (tgt) lines.push(`${name}: ${tgt}`);
   });
   if (!lines.length) {
-    toast("Nada que copiar todavía");
+    toast(t("toast-nothing-to-copy"));
     return;
   }
   navigator.clipboard?.writeText(lines.join("\n")).catch(() => {});
-  toast("Conversación copiada");
+  toast(t("toast-transcript-copied"));
 }
 
 export function exportRoom(): void {
   if (app.demo) {
-    toast("Exportar disponible al desplegar tu servidor");
+    toast(t("room-export-demo"));
     return;
   }
   const rs = app.roomState;
