@@ -66,6 +66,7 @@ declare global {
     onChatInputKey: (ev: KeyboardEvent) => void;
     toggleChatVoiceNote: () => void;
     playDmVoice: (messageId: number) => void;
+    enablePushNotifications: () => void;
   }
 }
 

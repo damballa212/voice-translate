@@ -10,6 +10,7 @@ import { show } from "./nav";
 import { openJoinRoom } from "./panels";
 import { startDemo } from "./demo";
 import { t } from "./i18n";
+import { openChat } from "./dm";
 
 /** Translate all static HTML elements marked with data-i18n attributes. */
 function translateStaticHTML(): void {
@@ -89,5 +90,9 @@ export async function init(): Promise<void> {
   if (roomCode && app.currentUser) {
     $opt<HTMLInputElement>("joinCode")!.value = roomCode.toUpperCase();
     setTimeout(() => openJoinRoom(), 400);
+  }
+  const chatId = Number(params.get("chat") || 0);
+  if (chatId && app.currentUser) {
+    setTimeout(() => openChat(chatId), 400);
   }
 }

@@ -6,6 +6,7 @@ import { show } from "./nav";
 import { connectWs } from "./ws";
 import { toast } from "./ui";
 import { t } from "./i18n";
+import { refreshPushStatus } from "./push";
 
 export function switchAuthTab(tab: string): void {
   const tabs = $opt("authTabs");
@@ -127,6 +128,7 @@ export async function refreshTrialStatus(): Promise<void> {
     if (r.ok) {
       app.currentUser = await r.json();
       renderUserBadge();
+      refreshPushStatus();
     }
   } catch {}
 }

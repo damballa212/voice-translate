@@ -197,6 +197,16 @@ const es: Dict = {
   "settings-root-language": "Idiomas y traducción",
   "settings-root-history": "Grabaciones",
   "settings-root-admin": "Estadísticas",
+  "push-title": "Notificaciones",
+  "push-enable": "Activar",
+  "push-status-checking": "Revisando soporte...",
+  "push-status-ready": "Listo para activar",
+  "push-status-enabled": "Notificaciones activadas",
+  "push-status-denied": "Permiso bloqueado en el navegador",
+  "push-status-unsupported": "Este navegador no soporta Web Push",
+  "push-status-server-disabled": "Falta configurar VAPID en el servidor",
+  "push-enable-error": "No se pudieron activar las notificaciones",
+  "push-enabled-toast": "Notificaciones activadas",
 };
 
 const ja: Dict = {

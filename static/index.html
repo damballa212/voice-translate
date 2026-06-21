@@ -4,14 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Traductor en Vivo</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Traductor" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="/icons/icon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <!-- VAD (detección de voz) — expone window.ort / window.vad -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js"></script>
-    <script type="module" crossorigin src="/assets/index-FEXDQILd.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CbqBVXo_.css">
+    <script type="module" crossorigin src="/assets/index-8GH72iwQ.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-AI04BItK.css">
   </head>
   <body>
     <div id="splash">
@@ -168,6 +174,14 @@
             </div>
             <div class="arr">→</div>
           </button>
+          <div class="card settings-push-card">
+            <div class="ic">🔔</div>
+            <div class="body">
+              <div class="ttl" data-i18n="push-title">Notificaciones</div>
+              <div class="desc" id="pushStatus" data-i18n="push-status-checking">Revisando soporte...</div>
+            </div>
+            <button class="mini-primary" id="pushEnableBtn" onclick="enablePushNotifications()" data-i18n="push-enable">Activar</button>
+          </div>
           <button class="card" onclick="window.open('/admin/stats','_blank')">
             <div class="ic">📊</div>
             <div class="body">

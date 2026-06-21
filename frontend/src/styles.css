@@ -147,6 +147,9 @@ body{
 .settings-root{flex:1;min-height:0;overflow-y:auto;padding:16px 18px 96px;display:flex;flex-direction:column;gap:10px}
 .settings-root .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-card);padding:16px;text-align:left;cursor:pointer;font-family:inherit;color:inherit;display:flex;align-items:center;gap:14px;box-shadow:var(--sh-card)}
 .settings-root .card .ic{width:44px;height:44px}
+.settings-root .settings-push-card{cursor:default}
+.mini-primary{border:0;border-radius:12px;background:var(--orange);color:#fff;font-family:inherit;font-size:12px;font-weight:700;padding:10px 13px;box-shadow:var(--sh-card);cursor:pointer;flex-shrink:0}
+.mini-primary:disabled{background:var(--line-2);color:var(--dim);box-shadow:none;cursor:not-allowed}
 
 /* ============ HEADER ============ */
 .head{padding:20px 22px 14px;border-bottom:1px solid var(--line);flex-shrink:0;display:flex;gap:12px;align-items:center;background:var(--paper)}

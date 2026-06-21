@@ -10,6 +10,7 @@ import time
 import traceback
 import secrets
 import uuid
+import html
 from pathlib import Path
 from datetime import datetime
 
@@ -41,6 +42,9 @@ LANGS = {
 TRIAL_LIMIT = int(os.getenv("TRIAL_LIMIT", "0"))
 VOICE_NOTES_DIR = Path(os.getenv("VOICE_NOTES_DIR", "data/voice-notes"))
 VOICE_NOTE_MAX_BYTES = int(os.getenv("VOICE_NOTE_MAX_BYTES", str(10 * 1024 * 1024)))
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+VAPID_CLAIM_EMAIL = os.getenv("VAPID_CLAIM_EMAIL", "admin@example.com")
 VOICE_NOTE_MIME_EXT = {
     "audio/webm": ".webm",
     "audio/mp4": ".m4a",
@@ -48,6 +52,12 @@ VOICE_NOTE_MIME_EXT = {
     "audio/wav": ".wav",
     "audio/ogg": ".ogg",
 }
+
+try:
+    from pywebpush import WebPushException, webpush
+except Exception:
+    WebPushException = Exception
+    webpush = None
 
 
 # ============================================================
@@ -175,6 +185,49 @@ def _dm_broadcast(conversation_id, msg):
             send(msg)
         except Exception as e:
             log("dm", f"broadcast failed: {e}")
+
+
+def _push_enabled():
+    return bool(webpush and VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY)
+
+
+def _send_push(subscription, payload):
+    if not _push_enabled():
+        return False
+    try:
+        webpush(
+            subscription_info=subscription,
+            data=json.dumps(payload, ensure_ascii=False),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={"sub": f"mailto:{VAPID_CLAIM_EMAIL}"},
+        )
+        return True
+    except WebPushException as e:
+        log("push", f"send failed: {e}")
+        return False
+
+
+def _notify_dm_message(message):
+    rows = db.push_list_conversation_recipients(
+        message["conversation_id"],
+        message["sender_user_id"],
+    )
+    if not rows:
+        return
+    title = "Nuevo mensaje"
+    body = "Nota de voz" if message.get("kind") == "voice" else (message.get("body") or "Nuevo mensaje")
+    body = html.unescape(str(body)).strip()
+    if len(body) > 120:
+        body = body[:117] + "..."
+    payload = {
+        "title": title,
+        "body": body,
+        "url": f"/?chat={message['conversation_id']}",
+        "conversation_id": message["conversation_id"],
+        "message_id": message["id"],
+    }
+    for row in rows:
+        _send_push(row["subscription"], payload)
 
 
 # ============================================================
@@ -658,6 +711,7 @@ async def ws_endpoint(ws: WebSocket):
                         "type": "dm_message",
                         "message": saved,
                     })
+                    _notify_dm_message(saved)
                 except PermissionError:
                     await outbox.put({"type": "error", "message": "No tienes acceso a esta conversación"})
                 except ValueError as e:
@@ -734,6 +788,16 @@ async def ws_endpoint(ws: WebSocket):
 @app.get("/")
 async def index():
     return FileResponse("static/index.html")
+
+
+@app.get("/manifest.webmanifest")
+async def manifest():
+    return FileResponse("static/manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+async def service_worker():
+    return FileResponse("static/sw.js", media_type="application/javascript")
 
 
 @app.get("/langs")
@@ -981,6 +1045,7 @@ async def dm_upload_voice(conversation_id: int, request: Request):
         raise
 
     _dm_broadcast(conversation_id, {"type": "dm_message", "message": msg})
+    _notify_dm_message(msg)
     return msg
 
 
@@ -996,6 +1061,42 @@ async def dm_voice(message_id: int, request: Request):
     if not path.exists() or not path.is_file():
         raise HTTPException(404, "Nota de voz no encontrada")
     return FileResponse(path, media_type=msg.get("voice_mime") or "application/octet-stream")
+
+
+# ============================================================
+# Web Push / PWA notifications
+# ============================================================
+@app.get("/push/config")
+async def push_config(request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    return {"enabled": _push_enabled(), "publicKey": VAPID_PUBLIC_KEY}
+
+
+@app.post("/push/subscriptions")
+async def push_subscribe(request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    body = await request.json()
+    try:
+        sub = db.push_save_subscription(u["id"], body)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "subscription": sub, "enabled": _push_enabled()}
+
+
+@app.delete("/push/subscriptions")
+async def push_unsubscribe(request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    body = await request.json()
+    endpoint = (body.get("endpoint") or "").strip()
+    if endpoint:
+        db.push_delete_subscription(u["id"], endpoint)
+    return {"ok": True}
 
 
 # ============================================================
@@ -1023,6 +1124,7 @@ async def admin_api_stats(request: Request):
 
 
 app.mount("/assets", StaticFiles(directory="static/assets"), name="static-assets")
+app.mount("/icons", StaticFiles(directory="static/icons"), name="static-icons")
 
 if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)

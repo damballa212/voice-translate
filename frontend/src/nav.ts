@@ -7,6 +7,7 @@ import { stopMic } from "./audio";
 import { refreshTrialStatus } from "./auth";
 import { updateLangDisplay } from "./langbar";
 import { t } from "./i18n";
+import { refreshPushStatus } from "./push";
 
 const ROOT_VIEWS = new Set(["viewLanding", "viewMessages", "viewSettings"]);
 
@@ -61,6 +62,7 @@ export function openSettingsRoot(): void {
   app.roomState = null;
   show("viewSettings");
   refreshTrialStatus();
+  refreshPushStatus();
 }
 
 export function enterSolo(): void {

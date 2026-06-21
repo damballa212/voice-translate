@@ -56,6 +56,7 @@ import {
   toggleChatVoiceNote,
   playDmVoice,
 } from "./dm";
+import { enablePushNotifications, registerServiceWorker } from "./push";
 
 // Expone los manejadores que el HTML invoca inline.
 Object.assign(window, {
@@ -100,9 +101,11 @@ Object.assign(window, {
   onChatInputKey,
   toggleChatVoiceNote,
   playDmVoice,
+  enablePushNotifications,
   __startDemo: startDemo,
 });
 
 initSplash();
 initBottomNav();
+registerServiceWorker();
 init();

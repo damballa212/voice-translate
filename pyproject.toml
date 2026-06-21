@@ -9,4 +9,5 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
     "websocket-client>=1.8.0",
     "python-dotenv>=1.0.0",
+    "pywebpush>=2.0.3",
 ]

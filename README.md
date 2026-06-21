@@ -111,6 +111,9 @@ open http://localhost:8800
 | `DASHSCOPE_API_KEY` | ✓ | — | 阿里云 DashScope key,用于 Qwen3-ASR + Qwen3-TTS |
 | `DEEPSEEK_API_KEY` | ✓ | — | DeepSeek-V4-Flash 翻译 |
 | `OPENAI_API_KEY` |  | — | OpenAI gpt-realtime-translate(可选,默认 UI 已隐藏) |
+| `VAPID_PUBLIC_KEY` |  | — | Web Push public key. If absent, push subscription UI is disabled |
+| `VAPID_PRIVATE_KEY` |  | — | Web Push private key used to send DM notifications |
+| `VAPID_CLAIM_EMAIL` |  | `admin@example.com` | Contact email included in VAPID claims |
 | `DB_PATH` |  | `app.db` | SQLite 路径 |
 | `TRIAL_LIMIT` |  | `3` | 每用户免费录音次数,`0` 不限 |
 | `PORT` |  | `8800` | HTTP/WS 端口 |
@@ -248,7 +251,7 @@ uv run admin_cli.py delete  <email>           # 删除用户 (含 recordings + r
 ## 🗺 Roadmap
 
 - [ ] **流式翻译** — DeepSeek `stream:true` SSE,译文字符级浮入
-- [ ] **PWA installable** — `manifest.json` + service worker,加桌面
+- [x] **PWA installable + DM push** — `manifest.webmanifest` + service worker + Web Push opt-in
 - [ ] **房间录音回放** — 把房间 PCM 存 S3,事后回放
 - [ ] **Admin 权限粒度** — `users.is_admin` 列,non-admin 只看自己 stats
 - [ ] **Webhook 通知** — 录音完成 / 试用超额时推 webhook

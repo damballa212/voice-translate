@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Traductor en Vivo</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Traductor" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="/icons/icon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -166,6 +172,14 @@
             </div>
             <div class="arr">→</div>
           </button>
+          <div class="card settings-push-card">
+            <div class="ic">🔔</div>
+            <div class="body">
+              <div class="ttl" data-i18n="push-title">Notificaciones</div>
+              <div class="desc" id="pushStatus" data-i18n="push-status-checking">Revisando soporte...</div>
+            </div>
+            <button class="mini-primary" id="pushEnableBtn" onclick="enablePushNotifications()" data-i18n="push-enable">Activar</button>
+          </div>
           <button class="card" onclick="window.open('/admin/stats','_blank')">
             <div class="ic">📊</div>
             <div class="body">

@@ -126,6 +126,16 @@ def init():
         CREATE INDEX IF NOT EXISTS idx_dm_members_user ON dm_members(user_id);
         CREATE INDEX IF NOT EXISTS idx_dm_messages_conversation ON dm_messages(conversation_id, created_at, id);
         CREATE INDEX IF NOT EXISTS idx_dm_conversations_updated ON dm_conversations(updated_at DESC);
+
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            endpoint TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            subscription_json TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
         """)
 
 
@@ -612,6 +622,89 @@ def dm_get_message(message_id: int, user_id: int) -> Optional[dict]:
             WHERE m.id = ? AND dm.user_id = ? AND m.deleted_at IS NULL
         """, (message_id, user_id)).fetchone()
         return _dm_message_dict(row) if row else None
+
+
+# ============================================================
+# Web Push subscriptions
+# ============================================================
+def _normalize_push_subscription(subscription: dict) -> dict:
+    if not isinstance(subscription, dict):
+        raise ValueError("Suscripción push inválida")
+    endpoint = (subscription.get("endpoint") or "").strip()
+    keys = subscription.get("keys") or {}
+    p256dh = (keys.get("p256dh") or "").strip() if isinstance(keys, dict) else ""
+    auth = (keys.get("auth") or "").strip() if isinstance(keys, dict) else ""
+    if not endpoint or not p256dh or not auth:
+        raise ValueError("Suscripción push incompleta")
+    if len(endpoint) > 2048 or len(p256dh) > 512 or len(auth) > 256:
+        raise ValueError("Suscripción push demasiado grande")
+    return {"endpoint": endpoint, "keys": {"p256dh": p256dh, "auth": auth}}
+
+
+def push_save_subscription(user_id: int, subscription: dict) -> dict:
+    normalized = _normalize_push_subscription(subscription)
+    now = time.time()
+    with conn() as c:
+        c.execute("""
+            INSERT INTO push_subscriptions (endpoint, user_id, subscription_json, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(endpoint) DO UPDATE SET
+                user_id = excluded.user_id,
+                subscription_json = excluded.subscription_json,
+                updated_at = excluded.updated_at
+        """, (
+            normalized["endpoint"],
+            user_id,
+            json.dumps(normalized, ensure_ascii=False),
+            now,
+            now,
+        ))
+    return normalized
+
+
+def push_delete_subscription(user_id: int, endpoint: str):
+    with conn() as c:
+        c.execute(
+            "DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?",
+            (user_id, endpoint),
+        )
+
+
+def push_list_subscriptions(user_id: int) -> list:
+    with conn() as c:
+        rows = c.execute("""
+            SELECT endpoint, subscription_json, updated_at
+            FROM push_subscriptions
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+        """, (user_id,)).fetchall()
+    out = []
+    for r in rows:
+        try:
+            sub = json.loads(r["subscription_json"])
+        except Exception:
+            continue
+        out.append({**sub, "updated_at": r["updated_at"]})
+    return out
+
+
+def push_list_conversation_recipients(conversation_id: int, sender_user_id: int) -> list:
+    with conn() as c:
+        rows = c.execute("""
+            SELECT ps.user_id, ps.subscription_json
+            FROM push_subscriptions ps
+            JOIN dm_members dm ON dm.user_id = ps.user_id
+            WHERE dm.conversation_id = ? AND ps.user_id != ?
+            ORDER BY ps.updated_at DESC
+        """, (conversation_id, sender_user_id)).fetchall()
+    out = []
+    for r in rows:
+        try:
+            sub = json.loads(r["subscription_json"])
+        except Exception:
+            continue
+        out.append({"user_id": r["user_id"], "subscription": sub})
+    return out
 
 
 # ============================================================
