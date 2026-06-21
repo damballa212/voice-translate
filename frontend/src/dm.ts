@@ -256,7 +256,7 @@ function renderMessage(message: DmMessage, animate: boolean): void {
     img.className = "chat-img";
     img.src = `/dm/image/${message.id}`;
     img.alt = "Imagen";
-    img.loading = "lazy";
+    img.onload = () => { img.style.minHeight = "0"; img.style.aspectRatio = "auto"; img.style.background = "none"; };
     img.onclick = () => openLightbox(img.src);
     div.appendChild(img);
   } else if (message.kind === "voice") {
