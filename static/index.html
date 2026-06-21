@@ -72,6 +72,23 @@
         </div>
       </div>
 
+      <!-- ONBOARDING VIEW -->
+      <div class="view" id="viewOnboarding">
+        <div class="hero" style="padding: 64px 28px 16px">
+          <h1 style="font-size:32px;font-weight:700;letter-spacing:-0.025em;line-height:1.1">
+            <span data-i18n="onboarding-title">Tu idioma nativo</span>
+          </h1>
+          <div class="sub" style="margin-top:8px;font-size:13px;color:var(--ink-soft);font-weight:500" data-i18n="onboarding-subtitle">
+            Selecciona tu idioma para personalizar las traducciones
+          </div>
+        </div>
+        <div style="padding:0 22px;flex:1;display:flex;flex-direction:column;overflow:hidden">
+          <input type="text" id="onboardingSearch" data-i18n-placeholder="lang-picker-search-placeholder" placeholder="Buscar idioma..." style="width:100%;padding:11px 14px;background:white;border:1px solid var(--line);border-radius:10px;color:var(--ink);font-size:14px;outline:none;font-family:inherit;margin-bottom:14px" oninput="renderOnboardingLangList()" />
+          <div id="onboardingLangList" style="flex:1;overflow-y:auto;border-radius:12px;border:1px solid var(--line)"></div>
+          <button class="primary auth-submit" id="onboardingContinueBtn" onclick="doSaveNativeLang()" disabled style="margin:18px 0 32px" data-i18n="onboarding-btn">Continuar</button>
+        </div>
+      </div>
+
       <!-- LANDING VIEW -->
       <div class="view landing" id="viewLanding">
         <div class="hero">

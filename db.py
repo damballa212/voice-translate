@@ -231,7 +231,7 @@ def get_session_user(token: str) -> Optional[dict]:
     if not token: return None
     with conn() as c:
         row = c.execute("""
-            SELECT u.id, u.email, u.nickname FROM sessions s
+            SELECT u.id, u.email, u.nickname, u.native_lang FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token = ? AND s.expires_at > ?
         """, (token, time.time())).fetchone()
