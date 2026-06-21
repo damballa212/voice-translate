@@ -289,8 +289,84 @@ function renderMessage(message: DmMessage, animate: boolean): void {
 
   div.addEventListener("contextmenu", (ev) => { ev.preventDefault(); showBubbleMenu(message, div); });
   div.addEventListener("pointerdown", makeLongPressHandler(message, div));
+  initSwipeToReply(div, message);
   el.appendChild(div);
   scrollDown("chatMessages");
+}
+
+// ============================================================
+// Swipe to reply (WhatsApp style)
+// ============================================================
+const SWIPE_THRESHOLD = 70;
+const SWIPE_MAX = 100;
+
+function initSwipeToReply(div: HTMLElement, message: DmMessage): void {
+  let startX = 0;
+  let startY = 0;
+  let swiping = false;
+  let locked = false;
+  let triggered = false;
+
+  const onStart = (e: TouchEvent | MouseEvent) => {
+    const pt = "touches" in e ? e.touches[0] : e;
+    startX = pt.clientX;
+    startY = pt.clientY;
+    swiping = false;
+    locked = false;
+    triggered = false;
+    div.style.transition = "none";
+  };
+
+  const onMove = (e: TouchEvent | MouseEvent) => {
+    const pt = "touches" in e ? e.touches[0] : e;
+    const dx = pt.clientX - startX;
+    const dy = pt.clientY - startY;
+
+    if (!locked) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { locked = true; return; }
+      if (Math.abs(dx) > 10) { swiping = true; locked = true; }
+      else return;
+    }
+    if (!swiping) return;
+
+    if (dx > 0) {
+      if ("cancelable" in e && e.cancelable) e.preventDefault();
+      const clamped = Math.min(dx, SWIPE_MAX);
+      div.style.transform = `translateX(${clamped}px)`;
+      const icon = div.querySelector<HTMLElement>(".swipe-reply-icon");
+      if (icon) {
+        const progress = Math.min(clamped / SWIPE_THRESHOLD, 1);
+        icon.style.opacity = String(progress);
+        icon.style.transform = `scale(${0.5 + progress * 0.5})`;
+      }
+      if (clamped >= SWIPE_THRESHOLD && !triggered) {
+        triggered = true;
+        if (navigator.vibrate) navigator.vibrate(20);
+      }
+    }
+  };
+
+  const onEnd = () => {
+    div.style.transition = "transform .25s cubic-bezier(.22,1,.36,1)";
+    div.style.transform = "";
+    const icon = div.querySelector<HTMLElement>(".swipe-reply-icon");
+    if (icon) { icon.style.opacity = "0"; icon.style.transform = "scale(0.5)"; }
+    if (triggered) setReply(message);
+    swiping = false;
+  };
+
+  div.style.position = "relative";
+  const icon = document.createElement("span");
+  icon.className = "swipe-reply-icon";
+  icon.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>`;
+  div.appendChild(icon);
+
+  div.addEventListener("touchstart", onStart, { passive: true });
+  div.addEventListener("touchmove", onMove, { passive: false });
+  div.addEventListener("touchend", onEnd);
+  div.addEventListener("mousedown", onStart);
+  div.addEventListener("mousemove", onMove);
+  div.addEventListener("mouseup", onEnd);
 }
 
 // ============================================================
