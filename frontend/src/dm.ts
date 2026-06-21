@@ -146,7 +146,7 @@ export async function openChat(id: number): Promise<void> {
   $("chatAvatar").textContent = (conv.participant.nickname || conv.participant.email).charAt(0).toUpperCase();
   $("chatMessages").innerHTML = `<div class="record-empty">${escapeHtml(t("dm-loading"))}</div>`;
   show("viewChat");
-  const myLang = (config.target || "en");
+  const myLang = (activeConversation?.my_target_lang || config.target || "en");
   send({ command: "dm_set_lang", conversation_id: id, target_lang: myLang });
   await loadMessages(id);
 }
@@ -182,7 +182,7 @@ function renderMessage(message: DmMessage): void {
   div.className = `chat-bubble ${mine ? "out" : "in"}`;
   div.id = `dm-msg-${message.id}`;
   div.dataset.messageId = String(message.id);
-  const myTarget = config.target || "en";
+  const myTarget = activeConversation?.my_target_lang || config.target || "en";
   if (message.kind === "voice") {
     const secs = Math.max(0, Math.round((message.voice_duration_ms || 0) / 1000));
     const hasTranscript = message.transcript && message.transcript.trim();
@@ -227,7 +227,7 @@ function showBubbleMenu(message: DmMessage, bubbleEl: HTMLElement): void {
   const menu = document.createElement("div");
   menu.className = "bubble-menu";
   const text = message.body || message.transcript || "";
-  const myTarget = config.target || "en";
+  const myTarget = activeConversation?.my_target_lang || config.target || "en";
   const actions: Array<{ label: string; action: () => void }> = [];
   if (text) {
     actions.push({

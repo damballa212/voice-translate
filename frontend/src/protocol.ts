@@ -81,6 +81,7 @@ export interface DmConversation {
   id: number;
   created_at: number;
   updated_at: number;
+  my_target_lang: string;
   participant: DmParticipant;
   last_message?: DmMessage | null;
   unread_count?: number;

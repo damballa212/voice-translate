@@ -512,7 +512,8 @@ def dm_list_conversations(user_id: int) -> list:
     with conn() as c:
         rows = c.execute("""
             SELECT dc.id, dc.created_at, dc.updated_at,
-                   COALESCE(dm.last_read_message_id, 0) AS last_read_message_id
+                   COALESCE(dm.last_read_message_id, 0) AS last_read_message_id,
+                   dm.target_lang AS my_target_lang
             FROM dm_conversations dc
             JOIN dm_members dm ON dm.conversation_id = dc.id
             WHERE dm.user_id = ?
@@ -540,6 +541,7 @@ def dm_list_conversations(user_id: int) -> list:
                 "id": r["id"],
                 "created_at": r["created_at"],
                 "updated_at": r["updated_at"],
+                "my_target_lang": r["my_target_lang"] or "en",
                 "participant": _dm_participant(c, r["id"], user_id),
                 "last_message": _dm_message_dict(last) if last else None,
                 "unread_count": unread,
