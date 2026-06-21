@@ -16,8 +16,8 @@
     <!-- VAD (detección de voz) — expone window.ort / window.vad -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js"></script>
-    <script type="module" crossorigin src="/assets/index-BxeVbhB6.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CWrndiUJ.css">
+    <script type="module" crossorigin src="/assets/index-CBdaz4f4.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CAxhQT56.css">
   </head>
   <body>
     <div id="splash">
@@ -160,9 +160,19 @@
         </div>
         <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-composer">
-          <input id="chatInput" class="chat-input" data-i18n-placeholder="dm-input-placeholder" placeholder="Mensaje" onkeydown="onChatInputKey(event)" />
-          <button class="chat-round" id="chatVoiceBtn" onclick="toggleChatVoiceNote()">🎙</button>
-          <button class="chat-round send" onclick="sendChatText()">➤</button>
+          <div id="chatComposerInner" style="display:flex;align-items:flex-end;gap:6px;flex:1">
+            <input id="chatInput" class="chat-input" data-i18n-placeholder="dm-input-placeholder" placeholder="Mensaje" onkeydown="onChatInputKey(event)" />
+            <button class="chat-round send" onclick="sendChatText()">➤</button>
+          </div>
+          <div id="chatRecordBar" class="chat-record-bar" style="display:none">
+            <button class="record-cancel" onclick="cancelChatVoice()">✕</button>
+            <span class="record-indicator"><span class="record-dot"></span></span>
+            <span class="record-duration" id="chatRecordDuration">0:00</span>
+            <span class="record-slide-hint" data-i18n="dm-voice-recording-hint">Grabando...</span>
+          </div>
+          <button class="chat-round" id="chatVoiceBtn"
+            ontouchstart="startChatVoice()" ontouchend="stopChatVoice()"
+            onmousedown="startChatVoice()" onmouseup="stopChatVoice()">🎙</button>
         </div>
       </div>
 

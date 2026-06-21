@@ -1,7 +1,5 @@
 /**
- * voiceNote.ts — Grabacion de notas de voz para DM.
- *
- * Separado de audio.ts: no inicia sesiones OpenAI ni envia PCM al traductor.
+ * voiceNote.ts — Hold-to-record voice notes for DM (WhatsApp style).
  */
 import type { DmMessage } from "./protocol";
 import { $opt } from "./state";
@@ -13,6 +11,8 @@ let chunks: Blob[] = [];
 let startedAt = 0;
 let activeConversationId = 0;
 let onSentCb: ((message: DmMessage) => void) | null = null;
+let durationInterval: ReturnType<typeof setInterval> | null = null;
+let cancelled = false;
 
 function setButtonRecording(on: boolean): void {
   const btn = $opt("chatVoiceBtn");
@@ -20,14 +20,27 @@ function setButtonRecording(on: boolean): void {
   if (btn) btn.textContent = on ? "■" : "🎙";
 }
 
-export async function toggleVoiceNote(
+function showRecordingUI(on: boolean): void {
+  const bar = $opt("chatRecordBar");
+  if (bar) bar.style.display = on ? "flex" : "none";
+  const composer = $opt("chatComposerInner");
+  if (composer) composer.style.display = on ? "none" : "flex";
+}
+
+function updateDuration(): void {
+  const el = $opt("chatRecordDuration");
+  if (!el) return;
+  const secs = Math.round((Date.now() - startedAt) / 1000);
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  el.textContent = `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export async function startRecording(
   conversationId: number,
   onSent: (message: DmMessage) => void,
 ): Promise<void> {
-  if (recorder && recorder.state === "recording") {
-    recorder.stop();
-    return;
-  }
+  if (recorder && recorder.state === "recording") return;
   if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
     toast(t("dm-voice-unsupported"));
     return;
@@ -41,6 +54,7 @@ export async function toggleVoiceNote(
     activeConversationId = conversationId;
     onSentCb = onSent;
     startedAt = Date.now();
+    cancelled = false;
     recorder = new MediaRecorder(stream, { mimeType: preferred });
     recorder.ondataavailable = (ev) => {
       if (ev.data.size) chunks.push(ev.data);
@@ -48,14 +62,49 @@ export async function toggleVoiceNote(
     recorder.onstop = () => {
       stream.getTracks().forEach((track) => track.stop());
       setButtonRecording(false);
+      showRecordingUI(false);
+      if (durationInterval) { clearInterval(durationInterval); durationInterval = null; }
+      if (cancelled) {
+        chunks = [];
+        cancelled = false;
+        return;
+      }
       uploadVoiceNote().catch(() => toast(t("dm-voice-upload-error")));
     };
     recorder.start();
     setButtonRecording(true);
-    toast(t("dm-voice-recording"));
+    showRecordingUI(true);
+    updateDuration();
+    durationInterval = setInterval(updateDuration, 500);
   } catch {
     setButtonRecording(false);
+    showRecordingUI(false);
     toast(t("toast-mic-unavailable"));
+  }
+}
+
+export function stopRecording(): void {
+  if (recorder && recorder.state === "recording") {
+    recorder.stop();
+  }
+}
+
+export function cancelRecording(): void {
+  if (recorder && recorder.state === "recording") {
+    cancelled = true;
+    recorder.stop();
+    toast(t("dm-voice-cancelled") || "Grabación cancelada");
+  }
+}
+
+export function toggleVoiceNote(
+  conversationId: number,
+  onSent: (message: DmMessage) => void,
+): void {
+  if (recorder && recorder.state === "recording") {
+    stopRecording();
+  } else {
+    startRecording(conversationId, onSent);
   }
 }
 
@@ -66,6 +115,7 @@ async function uploadVoiceNote(): Promise<void> {
   recorder = null;
   chunks = [];
   if (!blob.size || !activeConversationId) return;
+  if (duration < 500) return;
   const r = await fetch(`/dm/conversations/${activeConversationId}/voice`, {
     method: "POST",
     headers: {

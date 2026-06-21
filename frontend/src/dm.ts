@@ -8,7 +8,7 @@ import { show } from "./nav";
 import { showPanel, closeOverlay } from "./panels";
 import { stopMic } from "./audio";
 import { toast } from "./ui";
-import { toggleVoiceNote } from "./voiceNote";
+import { startRecording, stopRecording, cancelRecording, toggleVoiceNote } from "./voiceNote";
 import { t } from "./i18n";
 
 let conversations: DmConversation[] = [];
@@ -442,9 +442,89 @@ export function toggleChatVoiceNote(): void {
   });
 }
 
+export function startChatVoice(): void {
+  if (!activeConversation) return;
+  startRecording(activeConversation.id, (message) => {
+    renderMessage(message, true);
+    loadConversations();
+  });
+}
+
+export function stopChatVoice(): void {
+  stopRecording();
+}
+
+export function cancelChatVoice(): void {
+  cancelRecording();
+}
+
+let _activeAudio: HTMLAudioElement | null = null;
+let _activeAudioId = 0;
+
 export function playDmVoice(messageId: number): void {
+  if (_activeAudio && _activeAudioId === messageId) {
+    if (_activeAudio.paused) {
+      _activeAudio.play().catch(() => {});
+      return;
+    }
+    _activeAudio.pause();
+    return;
+  }
+
+  if (_activeAudio) {
+    _activeAudio.pause();
+    resetAudioUI(_activeAudioId);
+  }
+
   const audio = new Audio(`/dm/voice/${messageId}`);
-  audio.play().catch(() => toast(t("dm-voice-play-error")));
+  _activeAudio = audio;
+  _activeAudioId = messageId;
+
+  const bubble = document.getElementById(`dm-msg-${messageId}`);
+  const playBtn = bubble?.querySelector<HTMLElement>(".voice-play");
+  const fill = bubble?.querySelector<HTMLElement>(".voice-slider-fill");
+  const durEl = bubble?.querySelector<HTMLElement>(".voice-duration");
+
+  if (playBtn) playBtn.textContent = "⏸";
+
+  audio.addEventListener("timeupdate", () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    if (fill) fill.style.width = `${pct}%`;
+    if (durEl) {
+      const remaining = Math.max(0, Math.ceil(audio.duration - audio.currentTime));
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      durEl.textContent = `${m}:${String(s).padStart(2, "0")}`;
+    }
+  });
+
+  audio.addEventListener("ended", () => {
+    resetAudioUI(messageId);
+    _activeAudio = null;
+    _activeAudioId = 0;
+  });
+
+  audio.addEventListener("pause", () => {
+    if (playBtn && !audio.ended) playBtn.textContent = "▶";
+  });
+
+  audio.addEventListener("play", () => {
+    if (playBtn) playBtn.textContent = "⏸";
+  });
+
+  audio.play().catch(() => {
+    toast(t("dm-voice-play-error"));
+    resetAudioUI(messageId);
+  });
+}
+
+function resetAudioUI(messageId: number): void {
+  const bubble = document.getElementById(`dm-msg-${messageId}`);
+  const playBtn = bubble?.querySelector<HTMLElement>(".voice-play");
+  const fill = bubble?.querySelector<HTMLElement>(".voice-slider-fill");
+  if (playBtn) playBtn.textContent = "▶";
+  if (fill) fill.style.width = "0%";
 }
 
 export function onChatLangChange(lang: string): void {

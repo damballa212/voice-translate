@@ -149,6 +149,13 @@ body{
 .chat-input:focus{box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .chat-round{width:44px;height:44px;border-radius:50%;border:0;background:#06d755;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.15);transition:transform .1s}
 .chat-round:active{transform:scale(.9)}
+.chat-record-bar{flex:1;display:flex;align-items:center;gap:10px;padding:0 12px;height:42px;background:#fff;border-radius:21px;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.record-cancel{border:0;background:none;font-size:18px;color:#999;cursor:pointer;padding:4px}
+.record-indicator{display:flex;align-items:center}
+.record-dot{width:10px;height:10px;border-radius:50%;background:#f21d2f;animation:rec-blink .8s infinite alternate}
+@keyframes rec-blink{from{opacity:.3}to{opacity:1}}
+.record-duration{font-family:var(--mono);font-size:14px;font-weight:600;color:#555}
+.record-slide-hint{font-size:13px;color:#999;flex:1;text-align:center}
 .chat-round.recording{background:#c0392b;animation:mic-bp 1.2s var(--e-standard) infinite}
 .chat-round.send{font-size:16px}
 .voice-bubble{border:0;background:transparent;color:inherit;display:flex;align-items:center;gap:9px;min-width:180px;font-family:inherit;cursor:pointer;padding:0;width:100%}
