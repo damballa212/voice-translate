@@ -22,9 +22,9 @@ function setButtonRecording(on: boolean): void {
 
 function showRecordingUI(on: boolean): void {
   const bar = $opt("chatRecordBar");
-  bar?.classList.toggle("active", on);
+  if (bar) bar.classList.toggle("active", on);
   const composer = $opt("chatComposerInner");
-  composer?.classList.toggle("hidden", on);
+  if (composer) composer.style.display = on ? "none" : "";
 }
 
 function updateDuration(): void {
