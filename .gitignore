@@ -29,3 +29,6 @@ output.wav
 
 # OMC 多 agent 协作状态
 .omc/
+
+# Brainstorming visual companion artifacts
+.superpowers/
