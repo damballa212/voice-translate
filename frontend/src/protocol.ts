@@ -51,6 +51,7 @@ export interface User {
   id?: number;
   email: string;
   nickname: string;
+  native_lang?: string;
   trial?: TrialInfo;
 }
 
@@ -58,6 +59,7 @@ export interface DmParticipant {
   id: number;
   email: string;
   nickname: string;
+  native_lang?: string;
 }
 
 export interface DmMessage {

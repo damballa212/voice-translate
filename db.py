@@ -141,6 +141,7 @@ def init():
             "ALTER TABLE dm_messages ADD COLUMN translations_json TEXT NOT NULL DEFAULT '{}'",
             "ALTER TABLE dm_messages ADD COLUMN transcript TEXT",
             "ALTER TABLE dm_members ADD COLUMN target_lang TEXT NOT NULL DEFAULT 'en'",
+            "ALTER TABLE users ADD COLUMN native_lang TEXT NOT NULL DEFAULT ''",
         ]:
             try:
                 c.execute(sql)
@@ -189,7 +190,7 @@ def create_user(email: str, password: str, nickname: str) -> Optional[dict]:
 
 def get_user(user_id: int) -> Optional[dict]:
     with conn() as c:
-        row = c.execute("SELECT id, email, nickname, created_at FROM users WHERE id = ?", (user_id,)).fetchone()
+        row = c.execute("SELECT id, email, nickname, native_lang, created_at FROM users WHERE id = ?", (user_id,)).fetchone()
         return dict(row) if row else None
 
 
@@ -199,11 +200,17 @@ def find_user_by_email(email: str) -> Optional[dict]:
         return dict(row) if row else None
 
 
+def set_native_lang(user_id: int, native_lang: str) -> None:
+    lang = (native_lang or "").strip().lower()
+    with conn() as c:
+        c.execute("UPDATE users SET native_lang = ? WHERE id = ?", (lang, user_id))
+
+
 def authenticate(email: str, password: str) -> Optional[dict]:
     u = find_user_by_email(email)
     if not u: return None
     if not verify_password(password, u["password_hash"]): return None
-    return {"id": u["id"], "email": u["email"], "nickname": u["nickname"]}
+    return {"id": u["id"], "email": u["email"], "nickname": u["nickname"], "native_lang": u.get("native_lang", "")}
 
 
 # ============================================================
@@ -428,7 +435,7 @@ def _dm_require_member(c, conversation_id: int, user_id: int):
 
 def _dm_participant(c, conversation_id: int, current_user_id: int) -> Optional[dict]:
     row = c.execute("""
-        SELECT u.id, u.email, u.nickname
+        SELECT u.id, u.email, u.nickname, u.native_lang
         FROM dm_members dm
         JOIN users u ON u.id = dm.user_id
         WHERE dm.conversation_id = ? AND dm.user_id != ?
@@ -649,7 +656,10 @@ def dm_get_message(message_id: int, user_id: int) -> Optional[dict]:
 def dm_member_target_langs(conversation_id: int) -> list[dict]:
     with conn() as c:
         rows = c.execute("""
-            SELECT user_id, target_lang FROM dm_members WHERE conversation_id = ?
+            SELECT dm.user_id, dm.target_lang, u.native_lang
+            FROM dm_members dm
+            JOIN users u ON u.id = dm.user_id
+            WHERE dm.conversation_id = ?
         """, (conversation_id,)).fetchall()
         return [dict(r) for r in rows]
 

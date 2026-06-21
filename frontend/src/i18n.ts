@@ -215,6 +215,13 @@ const es: Dict = {
   "push-status-server-disabled": "Falta configurar VAPID en el servidor",
   "push-enable-error": "No se pudieron activar las notificaciones",
   "push-enabled-toast": "Notificaciones activadas",
+  "onboarding-title": "¿Cuál es tu idioma nativo?",
+  "onboarding-subtitle": "Lo usamos para saber cuándo y a qué idioma traducir tus mensajes.",
+  "onboarding-btn": "Continuar",
+  "onboarding-select-prompt": "Selecciona tu idioma nativo para continuar",
+  "onboarding-saved-toast": "Idioma nativo guardado",
+  "settings-native-lang-title": "Mi idioma nativo",
+  "settings-native-lang-desc": "Idioma que hablas",
 };
 
 const ja: Dict = {
@@ -372,6 +379,13 @@ const ja: Dict = {
   "lang-ms": "マレー語",
   "lang-no": "ノルウェー語",
   "footer-text": "VOICE TRANSLATE · v1.0 · OPENAI",
+  "onboarding-title": "あなたの母国語は何ですか？",
+  "onboarding-subtitle": "いつ、どの言語に翻訳するかを判断するために使います。",
+  "onboarding-btn": "続ける",
+  "onboarding-select-prompt": "続けるには母国語を選択してください",
+  "onboarding-saved-toast": "母国語を保存しました",
+  "settings-native-lang-title": "私の母国語",
+  "settings-native-lang-desc": "話す言語",
 };
 
 const ru: Dict = {
@@ -529,6 +543,13 @@ const ru: Dict = {
   "lang-ms": "Малайский",
   "lang-no": "Норвежский",
   "footer-text": "VOICE TRANSLATE · v1.0 · OPENAI",
+  "onboarding-title": "Какой у вас родной язык?",
+  "onboarding-subtitle": "Это поможет нам понять, когда и на какой язык переводить ваши сообщения.",
+  "onboarding-btn": "Продолжить",
+  "onboarding-select-prompt": "Выберите родной язык, чтобы продолжить",
+  "onboarding-saved-toast": "Родной язык сохранён",
+  "settings-native-lang-title": "Мой родной язык",
+  "settings-native-lang-desc": "Язык, на котором вы говорите",
 };
 
 const dictionaries: Record<Locale, Dict> = { es, ja, ru };

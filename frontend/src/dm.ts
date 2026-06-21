@@ -184,18 +184,20 @@ function renderMessage(message: DmMessage): void {
   div.className = `chat-bubble ${mine ? "out" : "in"}`;
   div.id = `dm-msg-${message.id}`;
   div.dataset.messageId = String(message.id);
-  const myTarget = activeConversation?.my_target_lang || config.target || "en";
+  const translationKey = mine
+    ? (activeConversation?.participant?.native_lang || "")
+    : (app.currentUser?.native_lang || "");
   if (message.kind === "voice") {
     const secs = Math.max(0, Math.round((message.voice_duration_ms || 0) / 1000));
     const hasTranscript = message.transcript && message.transcript.trim();
-    const translatedText = !mine ? (message.translations_json?.[myTarget] || "") : "";
+    const translatedText = translationKey ? (message.translations_json?.[translationKey] || "") : "";
     div.innerHTML = `<button class="voice-bubble" onclick="playDmVoice(${message.id})">
       <span class="voice-play">▶</span>
       <span class="voice-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
       <span class="voice-duration">${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}</span>
     </button>${hasTranscript ? `<span class="chat-transcript">${escapeHtml(message.transcript!)}</span>` : ""}${translatedText ? `<span class="chat-translation">${escapeHtml(translatedText)}</span>` : ""}`;
   } else {
-    const translatedText = !mine ? (message.translations_json?.[myTarget] || "") : "";
+    const translatedText = translationKey ? (message.translations_json?.[translationKey] || "") : "";
     const bodyEl = document.createElement("span");
     bodyEl.className = "chat-body";
     bodyEl.textContent = message.body || "";
@@ -229,13 +231,18 @@ function showBubbleMenu(message: DmMessage, bubbleEl: HTMLElement): void {
   const menu = document.createElement("div");
   menu.className = "bubble-menu";
   const text = message.body || message.transcript || "";
-  const myTarget = activeConversation?.my_target_lang || config.target || "en";
+  const mine = message.sender_user_id === currentUserId();
+  const translationKey = mine
+    ? (activeConversation?.participant?.native_lang || "")
+    : (app.currentUser?.native_lang || "");
   const actions: Array<{ label: string; action: () => void }> = [];
   if (text) {
     actions.push({
       label: t("bubble-menu-translate"),
       action: () => {
-        send({ command: "dm_translate_bubble", message_id: message.id, target_lang: myTarget });
+        if (translationKey) {
+          send({ command: "dm_translate_bubble", message_id: message.id, target_lang: translationKey });
+        }
         dismissBubbleMenu();
       },
     });

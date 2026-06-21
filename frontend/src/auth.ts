@@ -7,6 +7,7 @@ import { connectWs } from "./ws";
 import { toast } from "./ui";
 import { t } from "./i18n";
 import { refreshPushStatus } from "./push";
+import { initOnboarding } from "./onboarding";
 
 export function switchAuthTab(tab: string): void {
   const tabs = $opt("authTabs");
@@ -100,9 +101,14 @@ export async function doLogout(): Promise<void> {
 }
 
 export function onAuthSuccess(): void {
-  show("viewLanding");
   renderUserBadge();
   connectWs();
+  if (!app.currentUser?.native_lang) {
+    initOnboarding();
+    show("viewOnboarding");
+  } else {
+    show("viewLanding");
+  }
 }
 
 export function renderUserBadge(): void {

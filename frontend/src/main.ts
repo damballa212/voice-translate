@@ -58,6 +58,7 @@ import {
   onChatLangChange,
 } from "./dm";
 import { enablePushNotifications, registerServiceWorker } from "./push";
+import { doSaveNativeLang, openNativeLangPicker, selectOnboardingLang, renderOnboardingLangList } from "./onboarding";
 
 // Expone los manejadores que el HTML invoca inline.
 Object.assign(window, {
@@ -105,6 +106,10 @@ Object.assign(window, {
   onChatLangChange,
   enablePushNotifications,
   __startDemo: startDemo,
+  doSaveNativeLang,
+  openNativeLangPicker,
+  selectOnboardingLang,
+  renderOnboardingLangList,
 });
 
 initSplash();

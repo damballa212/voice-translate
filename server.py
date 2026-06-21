@@ -710,25 +710,27 @@ async def ws_endpoint(ws: WebSocket):
                     members = db.dm_member_target_langs(conversation_id)
                     sender_id = user["id"]
                     sender_member = next((m for m in members if m["user_id"] == sender_id), None)
-                    source_hint = sender_member.get("target_lang") if sender_member else None
+                    sender_native = (sender_member.get("native_lang") or "").strip() if sender_member else ""
                     target_langs = [
-                        m["target_lang"] for m in members
-                        if m["user_id"] != sender_id and m.get("target_lang")
+                        m["native_lang"] for m in members
+                        if m["user_id"] != sender_id
+                        and (m.get("native_lang") or "").strip()
+                        and (m.get("native_lang") or "").strip() != sender_native
                     ]
-                    log("dm", f"send_text conv={conversation_id} body={body!r:.40} members={[(m['user_id'], m['target_lang']) for m in members]} target_langs={target_langs}")
+                    log("dm", f"send_text conv={conversation_id} body={body!r:.40} sender_native={sender_native!r} target_langs={target_langs}")
                     translations = {}
                     if target_langs:
                         try:
                             translations = await translate_for_members(
                                 body, target_langs,
-                                source_hint=source_hint,
+                                source_hint=sender_native or None,
                                 sender_name=user.get("nickname") or user.get("email"),
                             )
                             log("dm", f"translated → {translations}")
                         except Exception as e:
                             err("dm", f"translate failed, sending without translation: {e}")
                     else:
-                        log("dm", "no target_langs — skipping translation")
+                        log("dm", f"same native_lang={sender_native!r} or not configured — skipping translation")
                     saved = db.dm_add_text_message(conversation_id, sender_id, body, translations)
                     _dm_broadcast(conversation_id, {
                         "type": "dm_message",
@@ -916,6 +918,20 @@ async def auth_me(request: Request):
         raise HTTPException(401, "No has iniciado sesión")
     used = db.count_recordings_by_user(u["id"])
     return {**u, "trial": {"used": used, "limit": TRIAL_LIMIT}}
+
+
+@app.post("/auth/native-lang")
+async def auth_set_native_lang(request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    body = await request.json()
+    lang = (body.get("native_lang") or "").strip().lower()
+    if not lang or len(lang) > 10:
+        raise HTTPException(400, "Idioma inválido")
+    db.set_native_lang(u["id"], lang)
+    updated = db.get_user(u["id"])
+    return updated
 
 
 # ============================================================
@@ -1109,13 +1125,20 @@ async def dm_upload_voice(conversation_id: int, request: Request):
     if transcript:
         try:
             members = db.dm_member_target_langs(conversation_id)
+            sender_native = ""
+            sender_member = next((m for m in members if m["user_id"] == u["id"]), None)
+            if sender_member:
+                sender_native = (sender_member.get("native_lang") or "").strip()
             target_langs = [
-                m["target_lang"] for m in members
-                if m["user_id"] != u["id"] and m.get("target_lang")
+                m["native_lang"] for m in members
+                if m["user_id"] != u["id"]
+                and (m.get("native_lang") or "").strip()
+                and (m.get("native_lang") or "").strip() != sender_native
             ]
             if target_langs:
                 translations = await translate_for_members(
                     transcript, target_langs,
+                    source_hint=sender_native or None,
                     sender_name=u.get("nickname") or u.get("email"),
                 )
         except Exception as e:
