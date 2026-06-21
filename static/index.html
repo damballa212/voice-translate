@@ -1,2416 +1,293 @@
 <!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Traductor en Vivo</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-:root{
-  --pagebg:#F4F4F5;
-  --paper:#FFFFFF; --paper-2:#F4F4F5; --line:#EAEAEC; --line-2:#DCDCE0;
-  --ink:#161618; --ink-soft:#46464B; --dim:#9B9BA3;
-  --orange:#4F46E5; --orange-deep:#4338CA; --accent-soft:#EEEEFC; --accent-ink:#3730A3;
-  --green:#0E9D6E; --plum:#9333EA; --teal:#0EA5E9; --sand:#D97706;
-  --warn:#D9911E; --warn-ink:#9A6510;
-  --sans:'Schibsted Grotesk',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
-  --hand:'Schibsted Grotesk',sans-serif; --cn:'Schibsted Grotesk',sans-serif;
-  --display-w:800; --cap-w:700;
-  --r-app:22px; --r-card:14px; --r-chip:11px; --r-btn:10px; --r-input:11px; --r-sheet:22px; --r-mic:16px; --r-bubble:16px;
-  --sh-card:0 1px 2px rgba(20,20,30,.05); --sh-pop:0 10px 28px rgba(20,20,40,.10); --sh-mic:0 6px 18px rgba(79,70,229,.32); --sh-app:0 30px 70px -20px rgba(20,20,40,.25);
-}
-
-:root{
-  --d-fast:150ms; --d-base:230ms; --d-slow:340ms; --d-slower:460ms;
-  --e-out:cubic-bezier(.22,1,.36,1); --e-in:cubic-bezier(.5,0,1,.4);
-  --e-spring:cubic-bezier(.2,.9,.25,1.15); --e-standard:cubic-bezier(.4,0,.2,1);
-  --stagger:45ms;
-}
-@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden}
-html{font-size:16px;-webkit-text-size-adjust:100%}
-body{
-  font-family:var(--sans); background:var(--pagebg); color:var(--ink);
-  display:flex; justify-content:center; align-items:center;
-  -webkit-tap-highlight-color:transparent; user-select:none; -webkit-font-smoothing:antialiased;
-  letter-spacing:-0.01em;
-}
-.app{
-  width:100%; max-width:480px; height:100dvh; display:flex; flex-direction:column;
-  background:var(--paper); position:relative; overflow:hidden;
-}
-@media (min-width:641px){
-  body{padding:34px}
-  .app{ height:min(940px, calc(100dvh - 68px)); border:1px solid var(--line);
-        border-radius:var(--r-app); box-shadow:var(--sh-app); }
-}
-@media (max-width:640px){ html{font-size:16.5px} .app{max-width:100%} }
-
-/* ---- view switcher ---- */
-.view{display:none;flex-direction:column;flex:1;min-height:0}
-.view.active{display:flex;animation:view-enter var(--d-slow) var(--e-out) both}
-.view.exiting{display:flex!important;animation:view-exit calc(var(--d-base)*.6) var(--e-in) both;pointer-events:none}
-@keyframes view-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-@keyframes view-exit{from{opacity:1}to{opacity:0;transform:translateY(-6px)}}
-@keyframes stagger-fade-up{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}}
-@keyframes blink{50%{opacity:0}}
-
-/* ============ HERO / LANDING ============ */
-.hero{padding:clamp(48px,9vh,72px) 30px 18px;flex-shrink:0}
-.landing .hero h1, #viewAuth .hero h1{
-  font-family:var(--hand); font-weight:var(--display-w); font-size:clamp(34px,9.5vw,42px);
-  letter-spacing:-0.04em; line-height:1.0; color:var(--ink);
-}
-.landing .hero h1 .hand, #viewAuth .hero h1 .hand{
-  color:var(--orange); font-family:var(--hand); font-weight:var(--display-w);
-  display:inline; font-size:1em; letter-spacing:-0.04em;
-}
-.landing .hero .sub, #viewAuth .hero .sub{
-  margin-top:14px; font-size:14.5px; color:var(--ink-soft); font-weight:450; line-height:1.55; max-width:34ch;
-}
-.landing .hero .sub b{color:var(--orange);font-weight:600}
-.landing .hero .sub a{color:var(--orange)}
-
-.landing .cards{padding:10px 22px 24px;display:flex;flex-direction:column;gap:10px}
-.landing .card{
-  background:var(--paper); border:1px solid var(--line); border-radius:var(--r-card);
-  padding:18px; text-align:left; cursor:pointer; font-family:inherit; color:inherit;
-  transition:transform var(--d-base) var(--e-out),box-shadow var(--d-base) var(--e-out),border-color var(--d-base) var(--e-out);
-  display:flex; align-items:center; gap:15px; box-shadow:var(--sh-card);
-}
-.landing .card:hover{transform:translateY(-2px);box-shadow:var(--sh-pop);border-color:var(--line-2)}
-.landing .card.create{ background:var(--orange); border-color:var(--orange); box-shadow:var(--sh-mic); }
-.landing .card.create:hover{filter:brightness(1.04);border-color:var(--orange)}
-.landing .card.create .ttl,.landing .card.create .desc,.landing .card.create .arr{color:#fff}
-.landing .card.create .desc{opacity:.82}
-.landing .card .ic{
-  width:46px;height:46px;border-radius:var(--r-chip);display:flex;align-items:center;justify-content:center;
-  font-size:21px;flex-shrink:0;background:var(--accent-soft);color:var(--orange);
-}
-.landing .card.create .ic{background:rgba(255,255,255,.18);color:#fff}
-.landing .card.join .ic{background:var(--paper-2);color:var(--green)}
-.landing .card.solo .ic{background:var(--paper-2);color:var(--ink-soft)}
-.landing .card .body{flex:1;min-width:0}
-.landing .card .ttl{font-size:15.5px;font-weight:650;color:var(--ink);letter-spacing:-0.02em}
-.landing .card .desc{font-size:12.5px;color:var(--ink-soft);margin-top:3px;font-weight:450}
-.landing .card .arr{color:var(--dim);font-size:17px;transition:transform var(--d-base) var(--e-out)}
-.landing .card:hover .arr{transform:translateX(3px)}
-.landing .footer{margin-top:auto;padding:14px 30px 30px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:0.1em;text-transform:uppercase}
-
-/* ============ HEADER ============ */
-.head{padding:20px 22px 14px;border-bottom:1px solid var(--line);flex-shrink:0;display:flex;gap:12px;align-items:center;background:var(--paper)}
-.head-back,.head-act{
-  width:38px;height:38px;border:1px solid var(--line);background:var(--paper);border-radius:var(--r-btn);
-  color:var(--ink-soft);cursor:pointer;flex-shrink:0;font-size:17px;display:flex;align-items:center;justify-content:center;
-}
-.head-back:hover,.head-act:hover{border-color:var(--line-2);color:var(--ink)}
-.head-info{flex:1;min-width:0}
-.head-title{font-size:17px;font-weight:650;letter-spacing:-0.025em;line-height:1.2;display:flex;align-items:center;gap:7px}
-.head-title .emoji{font-size:15px;opacity:.9}
-.head-meta{margin-top:5px;font-family:var(--mono);font-size:10.5px;color:var(--dim);display:flex;gap:6px;align-items:center;flex-wrap:wrap;letter-spacing:0.02em}
-.head-meta .live-dot{width:7px;height:7px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 3px var(--accent-soft);animation:pulse 1.4s infinite}
-@keyframes pulse{50%{opacity:.4}}
-.head-meta b{color:var(--orange);font-weight:600}
-.head-meta .code{background:var(--accent-soft);padding:2px 8px;border-radius:6px;color:var(--accent-ink);font-weight:600;cursor:pointer;letter-spacing:0.08em}
-.head-meta .code:hover{background:var(--orange);color:#fff}
-
-/* ============ LANG BAR ============ */
-.lang-bar{padding:14px 22px;display:flex;align-items:center;gap:8px;flex-shrink:0;border-bottom:1px solid var(--line)}
-.lang-tag{flex:1;padding:11px 14px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-chip);font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--ink-soft);cursor:pointer;font-weight:550;min-height:44px}
-.lang-tag .flag{font-size:16px}
-.lang-tag.active{border-color:var(--orange);color:var(--ink);background:var(--accent-soft)}
-.lang-tag:hover{border-color:var(--line-2)}
-.lang-swap{width:38px;height:38px;border:1px solid var(--line);background:var(--paper);color:var(--orange);border-radius:50%;cursor:pointer;font-size:15px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.lang-swap:hover{background:var(--accent-soft);border-color:var(--orange)}
-
-/* ============ MEMBERS strip ============ */
-.members{padding:13px 22px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;overflow-x:auto;flex-shrink:0;background:var(--paper)}
-.members::-webkit-scrollbar{display:none}
-.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;position:relative;transition:box-shadow .3s;letter-spacing:-0.02em}
-.av.c0{background:var(--orange)} .av.c1{background:var(--green)} .av.c2{background:var(--plum)} .av.c3{background:var(--teal)} .av.c4{background:var(--sand)}
-.av.me{background:var(--paper-2);color:var(--ink-soft);border:1px dashed var(--line-2)}
-.av.speaking{box-shadow:0 0 0 3px var(--accent-soft),0 0 0 7px color-mix(in srgb, var(--orange) 16%, transparent);animation:av-breathe 1.4s var(--e-standard) infinite}
-@keyframes av-breathe{50%{box-shadow:0 0 0 4px var(--accent-soft),0 0 0 12px color-mix(in srgb, var(--orange) 6%, transparent)}}
-.members .who{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-left:4px;white-space:nowrap;flex:1;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.01em}
-.members .invite{font-family:var(--sans);font-size:12px;font-weight:600;padding:8px 13px;border:1px solid var(--line-2);background:var(--paper);color:var(--ink-soft);border-radius:999px;cursor:pointer;flex-shrink:0;min-height:36px}
-.members .invite:hover{color:var(--orange);border-color:var(--orange);background:var(--accent-soft)}
-
-/* ============ SOLO transcript / captions ============ */
-.transcript{flex:1;overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;min-height:0}
-.transcript::-webkit-scrollbar{width:0}
-.empty-state{margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--dim);font-size:14.5px;line-height:1.7;text-align:center;font-family:var(--sans);font-weight:450;gap:2px}
-.empty-state .big{font-size:40px;margin-bottom:14px;opacity:.85;width:78px;height:78px;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);border-radius:50%;color:var(--orange)}
-.subtitle-text{font-family:var(--sans);line-height:1.32;color:var(--ink);padding:6px 0;display:flex;flex-direction:column;gap:14px}
-.cap-old,.cap-current{display:block;word-break:break-word;white-space:pre-wrap}
-.cap-old{font-size:18px;font-weight:500;color:var(--ink-soft);opacity:.5;letter-spacing:-0.02em;animation:cap-old-settle var(--d-slow) var(--e-out) both;transform-origin:left center}
-.cap-current{font-size:clamp(27px,7vw,33px);font-weight:var(--cap-w);color:var(--ink);letter-spacing:-0.035em;line-height:1.18}
-.cap-current.cap-placeholder{color:var(--dim);font-weight:500;font-style:normal;opacity:.7}
-.cap-current .ch{display:inline-block;animation:cap-char-in 240ms var(--e-out) both;white-space:pre}
-@keyframes cap-char-in{from{opacity:0;transform:translateY(8px);filter:blur(2px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
-@keyframes cap-old-settle{from{opacity:1;font-size:30px;color:var(--ink)}to{opacity:.5;font-size:18px;color:var(--ink-soft)}}
-.subtitle-cursor{display:inline-block;width:3px;height:0.85em;background:var(--orange);margin-left:3px;vertical-align:-0.05em;border-radius:2px;animation:blink 1s infinite}
-
-/* ---- history list ---- */
-.record-item{display:flex;align-items:center;padding:13px 4px;border-bottom:1px solid var(--line);gap:12px;animation:stagger-fade-up var(--d-base) var(--e-out) both}
-.record-item:last-child{border-bottom:0}
-.record-info{flex:1;min-width:0}
-.record-name{font-weight:600;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.01em}
-.record-meta{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:3px}
-.record-dl,.record-del{width:34px;height:34px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-.record-dl:hover{color:var(--orange);border-color:var(--orange)}
-.record-del:hover{color:#c0392b;border-color:#c0392b}
-.record-empty{text-align:center;padding:40px 12px;color:var(--dim);font-size:13px}
-.record-skeleton{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
-.record-skeleton .sk-rows{flex:1;display:flex;flex-direction:column;gap:7px}
-.record-skeleton .sk-bar{height:12px;background:linear-gradient(90deg,var(--line) 0%,var(--line-2) 50%,var(--line) 100%);background-size:200% 100%;border-radius:6px;animation:sk-shimmer 1.4s linear infinite}
-.record-skeleton .sk-title{width:62%}
-.record-skeleton .sk-meta{width:38%;height:9px;opacity:.65}
-.record-skeleton .sk-icon{width:34px;height:34px;border-radius:var(--r-btn);background:linear-gradient(90deg,var(--line) 0%,var(--line-2) 50%,var(--line) 100%);background-size:200% 100%;animation:sk-shimmer 1.4s linear infinite;flex-shrink:0}
-@keyframes sk-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-#langList>div{animation:stagger-fade-up var(--d-fast) var(--e-out) both}
-
-/* ---- solo legacy bubbles (kept) ---- */
-.bubble{padding:14px 18px;border-radius:var(--r-bubble);font-size:14px;line-height:1.55;max-width:92%;box-shadow:var(--sh-card);animation:fadeUp .3s ease}
-.bubble.src{background:var(--paper);border:1px solid var(--line);border-bottom-left-radius:4px;align-self:flex-start}
-.bubble.tgt{background:var(--accent-soft);border:1px solid var(--orange);border-bottom-right-radius:4px;align-self:flex-end}
-.bubble .label{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
-.bubble.tgt .label{color:var(--orange)}
-.bubble .text{font-size:15px;color:var(--ink);font-weight:500}
-
-/* ============ WAVE ============ */
-.wave-viz{display:none;align-items:flex-end;justify-content:center;gap:3px;height:50px;padding:6px 26px 2px;flex-shrink:0;opacity:0;transition:opacity var(--d-base) var(--e-out)}
-.wave-viz.live{display:flex;opacity:1}
-.wave-bar{width:4px;flex:1;max-width:6px;height:100%;background:linear-gradient(180deg,var(--orange) 0%,var(--orange-deep) 100%);border-radius:3px;transform:scaleY(.06);transform-origin:bottom center;transition:transform 60ms linear;opacity:.92}
-
-/* ============ ROOM stream ============ */
-.stream{flex:1;overflow-y:auto;padding:18px 22px;min-height:0}
-.stream::-webkit-scrollbar{width:0}
-.turn{margin-bottom:20px;display:flex;gap:12px;animation:fadeUp .32s var(--e-out)}
-.turn .col-av{flex-shrink:0}
-.turn .col-body{flex:1;min-width:0;display:flex;flex-direction:column}
-.turn .head-line{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;order:0}
-.turn .name{font-weight:650;font-size:13.5px;letter-spacing:-0.01em}
-.turn .name.c0{color:var(--orange)} .turn .name.c1{color:var(--green)} .turn .name.c2{color:var(--plum)} .turn .name.c3{color:var(--teal)} .turn .name.c4{color:var(--sand)}
-.turn .lang-tag-mini{font-family:var(--mono);font-size:9px;color:var(--ink-soft);background:var(--paper-2);padding:2px 6px;border-radius:5px;letter-spacing:.08em;text-transform:uppercase}
-.turn .ts{font-family:var(--mono);font-size:10px;color:var(--dim);margin-left:auto}
-.turn .tgt-text{order:1;font-size:16px;color:var(--ink);line-height:1.5;font-weight:500;letter-spacing:-0.015em}
-.turn .src-text{order:2;margin-top:6px;font-family:var(--sans);font-size:12.5px;color:var(--dim);line-height:1.5;font-weight:450;padding-left:11px;border-left:2px solid var(--line-2)}
-.turn.live .tgt-text::after{content:"";display:inline-block;width:3px;height:0.95em;background:var(--orange);margin-left:3px;vertical-align:-0.1em;border-radius:2px;animation:blink 1s infinite}
-
-/* ============ DOCK / MIC ============ */
-.dock{padding:14px 18px;border-top:1px solid var(--line);background:var(--paper);display:flex;gap:11px;align-items:center;flex-shrink:0}
-.mic{width:54px;height:54px;border-radius:var(--r-mic);background:var(--orange);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--sh-mic);transition:transform var(--d-base) var(--e-spring);position:relative}
-.mic:active{transform:scale(.94)}
-.mic svg{width:22px;height:22px;fill:#fff;position:relative;z-index:1}
-.mic.connecting::before,.mic.connecting::after{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid color-mix(in srgb,var(--warn) 55%,transparent);animation:mic-ripple 1.6s var(--e-out) infinite;pointer-events:none;z-index:0}
-.mic.connecting::after{animation-delay:.8s}
-@keyframes mic-ripple{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.3);opacity:0}}
-.mic.just-started{animation:mic-burst 600ms var(--e-spring) both}
-.mic.just-started>.mic-burst-ring{position:absolute;inset:-5px;border-radius:inherit;border:3px solid var(--orange);animation:mic-burst-ring 600ms var(--e-out) both;pointer-events:none;z-index:2}
-@keyframes mic-burst{0%{transform:scale(1)}25%{transform:scale(.9)}60%{transform:scale(1.1)}100%{transform:scale(1)}}
-@keyframes mic-burst-ring{0%{opacity:1;transform:scale(.7)}100%{opacity:0;transform:scale(2.3)}}
-.mic.recording{background:var(--orange);animation:mic-bp 1.5s var(--e-standard) infinite}
-@keyframes mic-bp{0%,100%{box-shadow:var(--sh-mic),0 0 0 5px var(--accent-soft)}50%{box-shadow:var(--sh-mic),0 0 0 12px color-mix(in srgb,var(--orange) 5%,transparent)}}
-.mic.connecting{background:var(--warn);cursor:progress;animation:mic-pulse-warn 1s var(--e-standard) infinite}
-.mic.connecting svg{animation:mic-spin 1.2s linear infinite;transform-origin:50% 50%}
-@keyframes mic-pulse-warn{0%,100%{box-shadow:0 4px 14px color-mix(in srgb,var(--warn) 40%,transparent)}50%{box-shadow:0 6px 18px color-mix(in srgb,var(--warn) 55%,transparent),0 0 0 12px color-mix(in srgb,var(--warn) 0%,transparent)}}
-@keyframes mic-spin{to{transform:rotate(360deg)}}
-.mic-info{flex:1;padding:9px 14px;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--r-input);min-width:0}
-.mic-info .ttl{font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-0.01em}
-.mic-info .ttl.warn{color:var(--warn-ink);font-weight:700}
-.mic-info .meta{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mic-info .meta b{color:var(--orange)}
-.dock-act{width:42px;height:42px;border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);border-radius:var(--r-btn);cursor:pointer;flex-shrink:0;font-size:15px;display:flex;align-items:center;justify-content:center}
-.dock-act:hover{color:var(--orange);border-color:var(--orange);background:var(--accent-soft)}
-
-/* ============ overlay / sheets ============ */
-.overlay{position:fixed;inset:0;z-index:100;background:color-mix(in srgb,var(--ink) 38%,transparent);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:none;opacity:0;transition:opacity var(--d-base) var(--e-out);justify-content:center;align-items:flex-end}
-.overlay.show{display:flex;opacity:1}
-.panel{width:100%;max-width:480px;max-height:86dvh;background:var(--paper);border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:14px 24px 30px;overflow-y:auto;animation:panel-enter var(--d-slow) var(--e-spring);box-shadow:0 -16px 48px rgba(0,0,0,.16)}
-@media(min-width:641px){.overlay{align-items:center}.panel{border-radius:var(--r-sheet);max-width:440px;animation:panel-pop var(--d-slow) var(--e-spring)}}
-@keyframes panel-enter{from{transform:translateY(100%);opacity:.4}to{transform:translateY(0);opacity:1}}
-@keyframes panel-pop{from{transform:scale(.95) translateY(10px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
-.overlay.closing .panel{animation:panel-exit calc(var(--d-base)*.6) var(--e-in) forwards}
-@keyframes panel-exit{from{transform:translateY(0);opacity:1}to{transform:translateY(60%);opacity:0}}
-.panel::-webkit-scrollbar{width:0}
-.panel .grip{width:38px;height:4px;background:var(--line-2);border-radius:2px;margin:0 auto 16px}
-.panel h3{font-size:18px;font-weight:650;text-align:center;margin-bottom:20px;letter-spacing:-0.02em}
-.form-group{margin-bottom:14px}
-.form-group label{display:block;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;font-weight:650;font-family:var(--mono)}
-.form-group input,.form-group select{width:100%;padding:13px 15px;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--r-input);color:var(--ink);font-size:15px;outline:none;font-family:inherit;transition:border-color var(--d-fast),background var(--d-fast)}
-.form-group input:focus,.form-group select:focus{border-color:var(--orange);background:var(--paper);box-shadow:0 0 0 3px var(--accent-soft)}
-.form-group input::placeholder{color:var(--dim)}
-.auth-tab{flex:1;padding:13px 8px;background:none;border:none;color:var(--dim);font-family:inherit;font-size:14.5px;font-weight:550;cursor:pointer;transition:color var(--d-fast)}
-.auth-tab.active{color:var(--ink);font-weight:650}
-.auth-tab-underline{position:absolute;bottom:-1px;left:0;width:50%;height:2px;background:var(--orange);border-radius:2px 2px 0 0;transition:transform var(--d-base) var(--e-out)}
-#authTabs[data-active="register"] .auth-tab-underline{transform:translateX(100%)}
-.auth-submit,.panel button.primary{width:100%;padding:15px;background:var(--orange);border:none;color:#fff;border-radius:var(--r-input);font-family:inherit;font-size:15px;font-weight:650;cursor:pointer;margin-top:12px;box-shadow:var(--sh-mic);letter-spacing:-0.01em}
-.auth-submit:active,.panel button.primary:active{transform:scale(.985)}
-#authLoginPane,#authRegisterPane{animation:stagger-fade-up var(--d-base) var(--e-out) both}
-.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0}
-.toggle-row span{font-size:14.5px;font-weight:500}
-.toggle{width:46px;height:27px;border-radius:14px;background:var(--line-2);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
-.toggle.on{background:var(--orange)}
-.toggle::after{content:"";position:absolute;width:21px;height:21px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s var(--e-spring);box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.toggle.on::after{transform:translateX(19px)}
-
-/* ============ toast / banner ============ */
-.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-8px) scale(.85);background:var(--ink);color:var(--paper);padding:11px 17px;border-radius:11px;font-size:13px;font-weight:550;z-index:200;opacity:0;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.22)}
-.toast.show{animation:toast-in var(--d-slow) var(--e-spring) forwards}
-.toast.hiding{animation:toast-out var(--d-fast) var(--e-in) forwards}
-@keyframes toast-in{0%{transform:translateX(-50%) translateY(-8px) scale(.85);opacity:0}55%{transform:translateX(-50%) translateY(10px) scale(1.03);opacity:1}100%{transform:translateX(-50%) translateY(8px) scale(1);opacity:1}}
-@keyframes toast-out{from{transform:translateX(-50%) translateY(8px) scale(1);opacity:1}to{transform:translateX(-50%) translateY(-10px) scale(.96);opacity:0}}
-#busyBanner{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:var(--warn);color:#fff;padding:9px 18px;border-radius:999px;font-size:13px;font-weight:600;box-shadow:0 6px 18px color-mix(in srgb,var(--warn) 35%,transparent);z-index:1000;display:none;animation:banner-bp 1.4s var(--e-standard) infinite}
-#busyBanner.show{display:block}
-#busyBanner .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;vertical-align:-2px;margin-right:6px;animation:mic-spin .9s linear infinite}
-@keyframes banner-bp{50%{transform:translateX(-50%) scale(1.03)}}
-
-/* ============ trial modal ============ */
-#trialModal{position:fixed;inset:0;z-index:1100;background:color-mix(in srgb,var(--ink) 48%,transparent);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;opacity:0;align-items:center;justify-content:center;padding:24px;transition:opacity var(--d-base) var(--e-out)}
-#trialModal.show{display:flex;opacity:1}
-#trialModal.closing{opacity:0}
-#trialModal .card{background:var(--paper);border-radius:var(--r-card);padding:30px 26px 22px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.25);animation:trial-pop var(--d-slow) var(--e-spring) both}
-#trialModal.closing .card{animation:trial-pop-out calc(var(--d-base)*.6) var(--e-in) forwards}
-@keyframes trial-pop{0%{transform:scale(.7) translateY(20px);opacity:0}60%{transform:scale(1.04) translateY(-4px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
-@keyframes trial-pop-out{from{transform:scale(1);opacity:1}to{transform:scale(.92) translateY(12px);opacity:0}}
-#trialModal .icon{width:62px;height:62px;border-radius:50%;background:var(--accent-soft);color:var(--orange);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:30px}
-#trialModal h2{font-size:19px;font-weight:650;color:var(--ink);margin-bottom:9px;letter-spacing:-0.02em}
-#trialModal .desc{font-size:13.5px;color:var(--ink-soft);line-height:1.55;margin-bottom:6px}
-#trialModal .count{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:600;letter-spacing:1px;margin-bottom:18px}
-#trialModal .github-cta{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:var(--r-input);padding:13px 14px;margin-bottom:14px;transition:border-color var(--d-fast),background var(--d-fast)}
-#trialModal .github-cta:hover{background:var(--accent-soft);border-color:var(--orange)}
-#trialModal .github-cta svg{flex-shrink:0;color:var(--ink)}
-#trialModal .github-cta-text{flex:1;min-width:0;text-align:left}
-#trialModal .github-cta-text .t{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px}
-#trialModal .github-cta-text .s{font-family:var(--mono);font-size:10px;color:var(--dim)}
-#trialModal .github-cta-arrow{font-size:18px;color:var(--ink-soft);flex-shrink:0}
-#trialModal .actions{display:flex;gap:10px}
-#trialModal button{flex:1;padding:13px;border-radius:var(--r-input);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;border:none}
-#trialModal button.primary{background:var(--orange);color:#fff;box-shadow:var(--sh-mic)}
-#trialModal button.ghost{background:var(--paper-2);color:var(--ink-soft)}
-.trial-pill{display:inline-block;padding:2px 9px;background:var(--accent-soft);color:var(--accent-ink);font-family:var(--mono);font-size:10px;font-weight:700;border-radius:999px;letter-spacing:.3px;margin-left:6px;vertical-align:middle}
-.trial-pill.empty{background:#fde8e4;color:#b3402e}
-
-/* ============ splash ============ */
-#splash{position:fixed;inset:0;background:var(--pagebg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10000;gap:14px;opacity:1;transition:opacity var(--d-base) var(--e-in),transform var(--d-base) var(--e-in)}
-#splash.fade-out{opacity:0;transform:scale(1.02);pointer-events:none}
-#splash .logo{width:84px;height:84px;border-radius:24px;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:40px;line-height:1;box-shadow:var(--sh-mic);animation:splash-logo-in 420ms var(--e-spring) both}
-#splash .title{font-family:var(--hand);font-weight:var(--display-w);font-size:24px;letter-spacing:-0.03em;color:var(--ink);margin-top:6px;animation:splash-fade-up 420ms var(--e-out) 120ms both}
-#splash .subtitle{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1.4px;text-transform:uppercase;animation:splash-fade-up 420ms var(--e-out) 200ms both}
-#splash .loader{width:120px;height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:12px;animation:splash-fade-up 360ms var(--e-out) 280ms both}
-#splash .loader::after{content:"";display:block;width:34%;height:100%;background:var(--orange);border-radius:2px;animation:splash-loader 900ms var(--e-out) 320ms both}
-@keyframes splash-logo-in{from{opacity:0;transform:translateY(12px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes splash-fade-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes splash-loader{from{transform:translateX(-100%)}to{transform:translateX(380%)}}
-
-button{transition:transform var(--d-fast) var(--e-spring),background-color var(--d-fast),color var(--d-fast),box-shadow var(--d-fast),border-color var(--d-fast)}
-.head-back:active,.head-act:active,.lang-tag:active,.lang-swap:active,.dock-act:active,button:active:not(:disabled){transform:scale(.96)}
-.head-title{min-width:0}
-#roomName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
-
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Traductor en Vivo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <!-- VAD (detección de voz) — expone window.ort / window.vad -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js"></script>
-</head>
-<body>
-    <!-- Splash 启动屏 (JS 控制: 首次访问 1.2s, 二次访问立即移除) -->
+    <script type="module" crossorigin src="/assets/index-BdlFzguN.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-H_pBVKar.css">
+  </head>
+  <body>
     <div id="splash">
       <div class="logo">🎙</div>
-      <div class="title">Traductor en Vivo</div>
-      <div class="subtitle">Realtime Voice Translator</div>
+      <div class="title" data-i18n="splash-title">Traductor en Vivo</div>
+      <div class="subtitle" data-i18n="splash-subtitle">Realtime Voice Translator</div>
       <div class="loader"></div>
     </div>
     <div class="app">
-      <!-- ============================================================
-       AUTH VIEW (登录 / 注册)
-       ============================================================ -->
+      <!-- AUTH VIEW -->
       <div class="view active" id="viewAuth">
         <div class="hero" style="padding: 64px 28px 16px">
-          <h1
-            style="
-              font-size: 36px;
-              font-weight: 700;
-              letter-spacing: -0.025em;
-              line-height: 1.05;
-            "
-          >
-            Traductor <span class="hand">en Vivo</span>
+          <h1 style="font-size:36px;font-weight:700;letter-spacing:-0.025em;line-height:1.05">
+            <span data-i18n="auth-title">Traductor</span> <span class="hand" data-i18n="auth-title-accent">en Vivo</span>
           </h1>
-          <div
-            class="sub"
-            style="
-              margin-top: 8px;
-              font-size: 13px;
-              color: var(--ink-soft);
-              font-weight: 500;
-            "
-          >
+          <div class="sub" style="margin-top:8px;font-size:13px;color:var(--ink-soft);font-weight:500" data-i18n="auth-subtitle">
             Inicia sesión para guardar grabaciones
           </div>
         </div>
-        <div
-          style="
-            padding: 24px 22px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-          "
-        >
-          <!-- Tab 切换: 登录 / 注册 -->
-          <div
-            id="authTabs"
-            style="
-              display: flex;
-              gap: 0;
-              border-bottom: 1px solid var(--line);
-              margin-bottom: 18px;
-              position: relative;
-            "
-          >
-            <button
-              type="button"
-              class="auth-tab active"
-              data-tab="login"
-              onclick="switchAuthTab('login')"
-            >
-              Iniciar sesión
-            </button>
-            <button
-              type="button"
-              class="auth-tab"
-              data-tab="register"
-              onclick="switchAuthTab('register')"
-            >
-              Registrarse
-            </button>
+        <div style="padding:24px 22px;flex:1;display:flex;flex-direction:column">
+          <div id="authTabs" style="display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;position:relative">
+            <button type="button" class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')" data-i18n="auth-tab-login">Iniciar sesión</button>
+            <button type="button" class="auth-tab" data-tab="register" onclick="switchAuthTab('register')" data-i18n="auth-tab-register">Registrarse</button>
             <div class="auth-tab-underline"></div>
           </div>
-
-          <!-- Login form -->
           <div id="authLoginPane">
             <div class="form-group">
-              <label>Correo</label>
-              <input
-                type="email"
-                id="loginEmail"
-                placeholder="you@example.com"
-                autocomplete="username"
-                onkeydown="if (event.key === 'Enter') doLogin();"
-              />
+              <label data-i18n="auth-label-email">Correo</label>
+              <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="username" onkeydown="if (event.key === 'Enter') doLogin();" />
             </div>
             <div class="form-group">
-              <label>Contraseña</label>
-              <input
-                type="password"
-                id="loginPwd"
-                placeholder="Introduce tu contraseña"
-                autocomplete="current-password"
-                onkeydown="if (event.key === 'Enter') doLogin();"
-              />
+              <label data-i18n="auth-label-password">Contraseña</label>
+              <input type="password" id="loginPwd" data-i18n-placeholder="auth-placeholder-password" placeholder="Introduce tu contraseña" autocomplete="current-password" onkeydown="if (event.key === 'Enter') doLogin();" />
             </div>
-            <button class="primary auth-submit" onclick="doLogin()">
-              Iniciar sesión
-            </button>
+            <button class="primary auth-submit" onclick="doLogin()" data-i18n="auth-btn-login">Iniciar sesión</button>
           </div>
-
-          <!-- Register form -->
           <div id="authRegisterPane" style="display: none">
             <div class="form-group">
-              <label>Correo</label>
-              <input
-                type="email"
-                id="regEmail"
-                placeholder="you@example.com"
-                autocomplete="username"
-                onkeydown="if (event.key === 'Enter') doRegister();"
-              />
+              <label data-i18n="auth-label-email">Correo</label>
+              <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="username" onkeydown="if (event.key === 'Enter') doRegister();" />
             </div>
             <div class="form-group">
-              <label>Apodo</label>
-              <input
-                type="text"
-                id="regNick"
-                placeholder="Dejar vacío usará el prefijo del correo"
-                maxlength="20"
-                onkeydown="if (event.key === 'Enter') doRegister();"
-              />
+              <label data-i18n="auth-label-nickname">Apodo</label>
+              <input type="text" id="regNick" data-i18n-placeholder="auth-placeholder-nickname" placeholder="Dejar vacío usará el prefijo del correo" maxlength="20" onkeydown="if (event.key === 'Enter') doRegister();" />
             </div>
             <div class="form-group">
-              <label>Contraseña (≥ 6 caracteres)</label>
-              <input
-                type="password"
-                id="regPwd"
-                placeholder="Establece una contraseña"
-                autocomplete="new-password"
-                onkeydown="if (event.key === 'Enter') doRegister();"
-              />
+              <label data-i18n="auth-label-password-register">Contraseña (≥ 6 caracteres)</label>
+              <input type="password" id="regPwd" data-i18n-placeholder="auth-placeholder-password-register" placeholder="Establece una contraseña" autocomplete="new-password" onkeydown="if (event.key === 'Enter') doRegister();" />
             </div>
-            <button class="primary auth-submit" onclick="doRegister()">
-              Registrarse e iniciar sesión
-            </button>
+            <button class="primary auth-submit" onclick="doRegister()" data-i18n="auth-btn-register">Registrarse e iniciar sesión</button>
           </div>
         </div>
       </div>
 
-      <!-- ============================================================
-       LANDING VIEW
-       ============================================================ -->
+      <!-- LANDING VIEW -->
       <div class="view landing" id="viewLanding">
         <div class="hero">
-          <h1>Traductor <span class="hand">en Vivo</span></h1>
-          <div class="sub">Que <b>cada voz</b> sea comprendida · Traducción individual / grupal en tiempo real</div>
+          <h1><span data-i18n="landing-title">Traductor</span> <span class="hand" data-i18n="landing-title-accent">en Vivo</span></h1>
+          <div class="sub" data-i18n-html="landing-subtitle-html">Que <b>cada voz</b> sea comprendida · Traducción individual / grupal en tiempo real</div>
         </div>
         <div class="cards">
           <button class="card solo" onclick="enterSolo()">
             <div class="ic">🎙</div>
             <div class="body">
-              <div class="ttl">Traducción individual</div>
-              <div class="desc">Conversación en otro idioma</div>
+              <div class="ttl" data-i18n="landing-card-solo-title">Traducción individual</div>
+              <div class="desc" data-i18n="landing-card-solo-desc">Conversación en otro idioma</div>
             </div>
             <div class="arr">→</div>
           </button>
           <button class="card create" onclick="openCreateRoom()">
             <div class="ic">＋</div>
             <div class="body">
-              <div class="ttl">Crear sala</div>
-              <div class="desc">Crea una sala e invita a otros</div>
+              <div class="ttl" data-i18n="landing-card-create-title">Crear sala</div>
+              <div class="desc" data-i18n="landing-card-create-desc">Crea una sala e invita a otros</div>
             </div>
             <div class="arr">→</div>
           </button>
           <button class="card join" onclick="openJoinRoom()">
             <div class="ic">⌬</div>
             <div class="body">
-              <div class="ttl">Unirse a sala</div>
-              <div class="desc">Ingresa el código de invitación</div>
+              <div class="ttl" data-i18n="landing-card-join-title">Unirse a sala</div>
+              <div class="desc" data-i18n="landing-card-join-desc">Ingresa el código de invitación</div>
             </div>
             <div class="arr">→</div>
           </button>
         </div>
-        <div class="footer">
-          VOICE TRANSLATE · v1.0 · OPENAI
-        </div>
+        <div class="footer" data-i18n="footer-text">VOICE TRANSLATE · v1.0 · OPENAI</div>
       </div>
 
-      <!-- ============================================================
-       SOLO VIEW
-       ============================================================ -->
+      <!-- SOLO VIEW -->
       <div class="view" id="viewSolo">
         <div class="head">
           <button class="head-back" onclick="backToLanding()">‹</button>
           <div class="head-info">
-            <div class="head-title"><span class="emoji">🎙</span>Traducción individual</div>
+            <div class="head-title"><span class="emoji">🎙</span><span data-i18n="solo-header-title">Traducción individual</span></div>
             <div class="head-meta" id="soloMeta">
-              <span class="live-dot"></span>Listo
+              <span class="live-dot"></span><span data-i18n="status-ready">Listo</span>
             </div>
           </div>
           <button class="head-act" onclick="openSettings()">⚙</button>
         </div>
-
         <div class="lang-bar">
-          <div
-            class="lang-tag active"
-            id="srcLang"
-            onclick="openLangPicker('src')"
-          >
+          <div class="lang-tag active" id="srcLang" onclick="openLangPicker('src')">
             <span class="flag" id="srcFlag">🌐</span>
-            <span id="srcLabel">Detectar idioma</span>
+            <span id="srcLabel" data-i18n="solo-src-label-default">Detectar idioma</span>
             <span style="color: var(--dim); font-size: 11px">▾</span>
           </div>
           <button class="lang-swap" onclick="swapLangs()">⇄</button>
           <div class="lang-tag" id="tgtLang" onclick="openLangPicker('tgt')">
-            <span class="flag" id="tgtFlag">🇨🇳</span>
-            <span id="tgtLabel">Ruso</span>
+            <span class="flag" id="tgtFlag">🇷🇺</span>
+            <span id="tgtLabel" data-i18n="solo-tgt-label-default">Ruso</span>
             <span style="color: var(--dim); font-size: 11px">▾</span>
           </div>
         </div>
-
         <div class="transcript" id="soloTranscript">
           <div class="empty-state" id="soloEmpty">
             <div class="big">🎙</div>
-            Pulsa el micrófono abajo<br />Habla en cualquier idioma, traducción en vivo
+            <span data-i18n="solo-empty-line1">Pulsa el micrófono abajo</span><br /><span data-i18n="solo-empty-line2">Habla en cualquier idioma, traducción en vivo</span>
           </div>
-          <div
-            class="subtitle-text"
-            id="subtitleText"
-            style="display: none"
-          ></div>
+          <div class="subtitle-text" id="subtitleText" style="display: none"></div>
         </div>
-
         <div class="wave-viz" id="waveSolo"></div>
         <div class="dock">
           <button class="mic" id="micSolo" onclick="toggleMic()">
-            <svg viewBox="0 0 24 24">
-              <path
-                d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"
-              />
-            </svg>
+            <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
           </button>
           <div class="mic-info">
-            <div class="ttl" id="micSoloTitle">Pulsa para empezar</div>
-            <div class="meta" id="micSoloMeta">Listo</div>
+            <div class="ttl" id="micSoloTitle" data-i18n="mic-solo-title-default">Pulsa para empezar</div>
+            <div class="meta" id="micSoloMeta" data-i18n="status-ready">Listo</div>
           </div>
-          <button
-            class="dock-act"
-            onclick="downloadCurrent()"
-            title="Descargar grabación"
-          >
-            ↓
-          </button>
-          <button class="dock-act" onclick="openHistory()" title="Grabaciones">
-            📜
-          </button>
+          <button class="dock-act" onclick="downloadCurrent()" data-i18n-title="btn-download-title" title="Descargar grabación">↓</button>
+          <button class="dock-act" onclick="openHistory()" data-i18n-title="btn-history-title" title="Grabaciones">📜</button>
         </div>
       </div>
 
-      <!-- ============================================================
-       ROOM VIEW
-       ============================================================ -->
+      <!-- ROOM VIEW -->
       <div class="view" id="viewRoom">
         <div class="head">
           <button class="head-back" onclick="leaveRoom()">‹</button>
           <div class="head-info">
             <div class="head-title">
-              <span class="emoji">📓</span><span id="roomName">Sala</span>
+              <span class="emoji">📓</span><span id="roomName" data-i18n="room-name-default">Sala</span>
             </div>
             <div class="head-meta" id="roomMeta">
               <span class="live-dot"></span>
               <span id="roomMembersCount">0</span> ·
-              <span class="code" id="roomCode" onclick="copyRoomCode()"
-                >XXXXXX</span
-              >
-              · Escucho <b id="roomMyTarget">Ruso</b>
+              <span class="code" id="roomCode" onclick="copyRoomCode()">XXXXXX</span>
+              · <span data-i18n="room-listen-label">Escucho</span> <b id="roomMyTarget" data-i18n="room-tgt-default">Ruso</b>
             </div>
           </div>
           <button class="head-act" onclick="openSettings()">⚙</button>
         </div>
-
         <div class="members" id="roomMembers"></div>
-
         <div class="stream" id="roomStream">
           <div class="empty-state">
             <div class="big">💬</div>
-            Sala lista<br />Pulsa el micrófono para hablar
+            <span data-i18n="room-empty-line1">Sala lista</span><br /><span data-i18n="room-empty-line2">Pulsa el micrófono para hablar</span>
           </div>
         </div>
-
         <div class="wave-viz" id="waveRoom"></div>
         <div class="dock">
           <button class="mic" id="micRoom" onclick="toggleMic()">
-            <svg viewBox="0 0 24 24">
-              <path
-                d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"
-              />
-            </svg>
+            <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
           </button>
           <div class="mic-info">
-            <div class="ttl" id="micRoomTitle">Pulsa para hablar</div>
-            <div class="meta" id="micRoomMeta">Listo</div>
+            <div class="ttl" id="micRoomTitle" data-i18n="mic-room-title-default">Pulsa para hablar</div>
+            <div class="meta" id="micRoomMeta" data-i18n="status-ready">Listo</div>
           </div>
-          <button class="dock-act" onclick="copyTranscript()" title="Copiar todo">
-            📋
-          </button>
-          <button class="dock-act" onclick="exportRoom()" title="Exportar Markdown">
-            ↓
-          </button>
+          <button class="dock-act" onclick="copyTranscript()" data-i18n-title="btn-copy-title" title="Copiar todo">📋</button>
+          <button class="dock-act" onclick="exportRoom()" data-i18n-title="btn-export-title" title="Exportar Markdown">↓</button>
         </div>
       </div>
     </div>
 
-    <!-- ============================================================
-     SETTINGS overlay
-     ============================================================ -->
-    <div
-      class="overlay"
-      id="overlay"
-      onclick="if (event.target === this) closeOverlay();"
-    >
+    <!-- SETTINGS overlay -->
+    <div class="overlay" id="overlay" onclick="if (event.target === this) closeOverlay();">
       <div class="panel" id="panelSettings" style="display: none">
         <div class="grip"></div>
-        <h3>Ajustes</h3>
+        <h3 data-i18n="settings-title">Ajustes</h3>
         <div class="form-group">
-          <label>Idioma de entrada</label>
+          <label data-i18n="settings-input-lang">Idioma de entrada</label>
           <select id="setAsrLang"></select>
         </div>
         <div class="form-group">
-          <label>Traducir a</label>
+          <label data-i18n="settings-target-lang">Traducir a</label>
           <select id="setTargetLang"></select>
         </div>
         <div class="toggle-row">
-          <span>Activar traducción</span>
-          <div
-            class="toggle on"
-            id="toggleTranslate"
-            onclick="
-              this.classList.toggle('on');
-              pushConfig();
-            "
-          ></div>
+          <span data-i18n="settings-toggle-translate">Activar traducción</span>
+          <div class="toggle on" id="toggleTranslate" onclick="this.classList.toggle('on'); pushConfig();"></div>
         </div>
         <div class="toggle-row">
-          <span>Voz (TTS)</span>
-          <div
-            class="toggle"
-            id="toggleTts"
-            onclick="
-              this.classList.toggle('on');
-              pushConfig();
-            "
-          ></div>
+          <span data-i18n="settings-toggle-tts">Voz (TTS)</span>
+          <div class="toggle" id="toggleTts" onclick="this.classList.toggle('on'); pushConfig();"></div>
         </div>
       </div>
 
-      <!-- Create Room panel -->
       <div class="panel" id="panelCreate" style="display: none">
         <div class="grip"></div>
-        <h3>Crear sala</h3>
+        <h3 data-i18n="create-room-title">Crear sala</h3>
         <div class="form-group">
-          <label>Nombre de la sala</label>
-          <input type="text" id="createName" placeholder="Ej: Reunión semanal" />
+          <label data-i18n="create-room-name-label">Nombre de la sala</label>
+          <input type="text" id="createName" data-i18n-placeholder="create-room-name-placeholder" placeholder="Ej: Reunión semanal" />
         </div>
         <div class="form-group">
-          <label>Tu apodo</label>
-          <input
-            type="text"
-            id="createNick"
-            placeholder="Tu nombre"
-            maxlength="20"
-          />
+          <label data-i18n="create-room-nick-label">Tu apodo</label>
+          <input type="text" id="createNick" data-i18n-placeholder="create-room-nick-placeholder" placeholder="Tu nombre" maxlength="20" />
         </div>
         <div class="form-group">
-          <label>Idioma que escuchas</label>
+          <label data-i18n="create-room-target-label">Idioma que escuchas</label>
           <select id="createTarget"></select>
         </div>
-        <button class="primary" onclick="doCreateRoom()">Crear</button>
+        <button class="primary" onclick="doCreateRoom()" data-i18n="create-room-btn">Crear</button>
       </div>
 
-      <!-- Lang picker panel -->
       <div class="panel" id="panelLang" style="display: none">
         <div class="grip"></div>
-        <h3 id="langPickerTitle">Seleccionar idioma</h3>
-        <input
-          type="text"
-          id="langSearchInput"
-          placeholder="Buscar idioma..."
-          style="
-            width: 100%;
-            padding: 11px 14px;
-            background: white;
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            color: var(--ink);
-            font-size: 14px;
-            outline: none;
-            font-family: inherit;
-            margin-bottom: 14px;
-          "
-          oninput="renderLangList()"
-        />
+        <h3 id="langPickerTitle" data-i18n="lang-picker-title">Seleccionar idioma</h3>
+        <input type="text" id="langSearchInput" data-i18n-placeholder="lang-picker-search-placeholder" placeholder="Buscar idioma..." style="width:100%;padding:11px 14px;background:white;border:1px solid var(--line);border-radius:10px;color:var(--ink);font-size:14px;outline:none;font-family:inherit;margin-bottom:14px" oninput="renderLangList()" />
         <div id="langList" style="max-height: 55dvh; overflow-y: auto"></div>
       </div>
 
-      <!-- History panel -->
       <div class="panel" id="panelHistory" style="display: none">
         <div class="grip"></div>
-        <h3>📜 Grabaciones</h3>
-        <div id="historyList"><div class="record-empty">Cargando…</div></div>
+        <h3 data-i18n="history-title">📜 Grabaciones</h3>
+        <div id="historyList"><div class="record-empty" data-i18n="history-loading">Cargando…</div></div>
       </div>
 
-      <!-- Join Room panel -->
       <div class="panel" id="panelJoin" style="display: none">
         <div class="grip"></div>
-        <h3>Unirse a sala</h3>
+        <h3 data-i18n="join-room-title">Unirse a sala</h3>
         <div class="form-group">
-          <label>Código</label>
-          <input
-            type="text"
-            id="joinCode"
-            placeholder="Código de 6 caracteres"
-            maxlength="8"
-            style="
-              text-transform: uppercase;
-              letter-spacing: 0.2em;
-              text-align: center;
-              font-family: var(--mono);
-            "
-          />
+          <label data-i18n="join-room-code-label">Código</label>
+          <input type="text" id="joinCode" data-i18n-placeholder="join-room-code-placeholder" placeholder="Código de 6 caracteres" maxlength="8" style="text-transform:uppercase;letter-spacing:0.2em;text-align:center;font-family:var(--mono)" />
         </div>
         <div class="form-group">
-          <label>Tu apodo</label>
-          <input
-            type="text"
-            id="joinNick"
-            placeholder="Tu nombre"
-            maxlength="20"
-          />
+          <label data-i18n="join-room-nick-label">Tu apodo</label>
+          <input type="text" id="joinNick" data-i18n-placeholder="join-room-nick-placeholder" placeholder="Tu nombre" maxlength="20" />
         </div>
         <div class="form-group">
-          <label>Idioma que escuchas</label>
+          <label data-i18n="join-room-target-label">Idioma que escuchas</label>
           <select id="joinTarget"></select>
         </div>
-        <button class="primary" onclick="doJoinRoom()">Unirse</button>
+        <button class="primary" onclick="doJoinRoom()" data-i18n="join-room-btn">Unirse</button>
       </div>
     </div>
 
-    <!-- Trial limit 弹框 -->
+    <!-- Trial modal -->
     <div id="trialModal" role="dialog" aria-labelledby="trialTitle">
       <div class="card">
         <div class="icon">⏰</div>
-        <h2 id="trialTitle">Prueba gratuita agotada</h2>
+        <h2 id="trialTitle" data-i18n="trial-title">Prueba gratuita agotada</h2>
         <div class="desc">
-          Gracias por probar el Traductor en Vivo<br />
-          Este es un <strong style="color: var(--ink)">proyecto open source</strong>, puedes desplegarlo por tu cuenta, completamente gratis
+          <span data-i18n="trial-desc">Gracias por probar el Traductor en Vivo</span><br />
+          <span data-i18n="trial-desc-2">Este es un proyecto open source, puedes desplegarlo por tu cuenta, completamente gratis</span>
         </div>
-        <div class="count" id="trialCount">3 / 3 usados</div>
-        <a
-          class="github-cta"
-          href="https://github.com/Timelk/realtime-translate"
-          target="_blank"
-          rel="noopener"
-        >
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path
-              fill="currentColor"
-              d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2c-3.21.7-3.89-1.55-3.89-1.55-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.7 1.25 3.36.95.1-.74.4-1.25.73-1.54-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.45.11-3.03 0 0 .96-.31 3.15 1.18a10.94 10.94 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.58.23 2.74.11 3.03.74.81 1.18 1.84 1.18 3.1 0 4.43-2.7 5.41-5.28 5.7.41.36.78 1.06.78 2.13v3.16c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .5z"
-            />
-          </svg>
+        <div class="count" id="trialCount">3 / 3</div>
+        <a class="github-cta" href="https://github.com/damballa212/voice-translate" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2c-3.21.7-3.89-1.55-3.89-1.55-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.7 1.25 3.36.95.1-.74.4-1.25.73-1.54-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.45.11-3.03 0 0 .96-.31 3.15 1.18a10.94 10.94 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.58.23 2.74.11 3.03.74.81 1.18 1.84 1.18 3.1 0 4.43-2.7 5.41-5.28 5.7.41.36.78 1.06.78 2.13v3.16c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
           <div class="github-cta-text">
-            <div class="t">Desplegar en GitHub</div>
-            <div class="s">Timelk/realtime-translate · MIT · Docker</div>
+            <div class="t" data-i18n="trial-github-title">Desplegar en GitHub</div>
+            <div class="s" data-i18n="trial-github-sub">voice-translate · MIT · Docker</div>
           </div>
           <div class="github-cta-arrow">→</div>
         </a>
         <div class="actions">
-          <button class="ghost" onclick="closeTrialModal()">Entendido</button>
-          <button class="primary" onclick="closeTrialModal(); openHistory();">
-            Ver grabaciones
-          </button>
+          <button class="ghost" onclick="closeTrialModal()" data-i18n="trial-btn-dismiss">Entendido</button>
+          <button class="primary" onclick="closeTrialModal(); openHistory();" data-i18n="trial-btn-history">Ver grabaciones</button>
         </div>
       </div>
     </div>
 
     <div class="toast" id="toast"></div>
     <div id="busyBanner">
-      <span class="spin"></span
-      ><span id="busyBannerText">Conectando, espera...</span>
+      <span class="spin"></span><span id="busyBannerText" data-i18n="busy-banner-default">Conectando, espera...</span>
     </div>
 
-
-    
-<script>
-
-      // ============================================================
-      // Splash 启动屏控制 — 首次访问 1.2s 品牌时刻, cookie 记忆
-      // ============================================================
-      (function initSplash() {
-        const SEEN = "splash-seen=1";
-        const el = document.getElementById("splash");
-        if (!el) return;
-        // 二次访问: 立刻移除, 走主页直接渐入
-        if (document.cookie.indexOf(SEEN) !== -1) {
-          el.remove();
-          return;
-        }
-        // 首访: 1.2s 后 fade-out + 280ms 后 remove + 1 年 cookie
-        setTimeout(() => {
-          el.classList.add("fade-out");
-          setTimeout(() => {
-            el.remove();
-            // splash 退场后 force-replay 当前 active view 的入场动画
-            // (splash 期间动画已跑完, 用户没看到)
-            const active = document.querySelector(".view.active");
-            if (active) {
-              active.classList.remove("active");
-              void active.offsetWidth;
-              active.classList.add("active");
-            }
-          }, 280);
-          document.cookie =
-            "splash-seen=1; max-age=31536000; path=/; samesite=lax";
-        }, 1200);
-      })();
-
-      // ============================================================
-      // State
-      // ============================================================
-      let ws = null;
-      let micStream = null;
-      let audioCtx = null;
-      let mic = null;
-      let audioProcessor = null;
-      let recording = false;
-      let backendReady = false; // 收到 server 'ready' 才置 true; 否则 onaudioprocess 跳过
-      // VAD gate: vadInstance===null 时直通 (库未加载/init 中/失败), 否则按 vadGate 门控
-      let vadInstance = null;
-      let vadGate = true; // ready 前默认 true 直通, ready 后由 onFrameProcessed 控制
-      let vadSilentCount = 0;
-      const VAD_POS = 0.35; // isSpeech > 此值 → 立刻开门 (放宽, 不丢小声说话)
-      const VAD_NEG = 0.2; // isSpeech < 此值 → 计入静音帧 (放宽)
-      const VAD_SILENT_OFF = 40; // 连续静音 ~1.3s 才关门 (留尾巴, 防句中短停顿被砍)
-      let currentView = "landing";
-      let mode = "idle"; // idle | solo | room
-      let roomState = null; // { code, name, members:[], you, myTarget }
-      const TARGET_RATE = 24000;
-
-      const config = {
-        lang: "auto",
-        target: "ru",
-        translate: true,
-        tts: false,
-        voice: "Cherry",
-        engine: "openai",
-      };
-
-      // OpenAI supported languages
-      // label = Spanish name (UI display)  alias = English/native (search)
-      const COMMON_LANGS = [
-        {
-          id: "auto",
-          label: "Detectar idioma",
-          alias: "auto detect",
-          flag: "🌐",
-          openai: false,
-        },
-        {
-          id: "zh",
-          label: "Chino",
-          alias: "chinese zh",
-          flag: "🇨🇳",
-          openai: true,
-        },
-        {
-          id: "en",
-          label: "Inglés",
-          alias: "english en",
-          flag: "🇬🇧",
-          openai: true,
-        },
-        {
-          id: "ja",
-          label: "Japonés",
-          alias: "japanese ja 日本語",
-          flag: "🇯🇵",
-          openai: true,
-        },
-        {
-          id: "ko",
-          label: "Coreano",
-          alias: "korean ko 한국어",
-          flag: "🇰🇷",
-          openai: true,
-        },
-        {
-          id: "es",
-          label: "Español",
-          alias: "spanish es español",
-          flag: "🇪🇸",
-          openai: true,
-        },
-        {
-          id: "fr",
-          label: "Francés",
-          alias: "french fr français",
-          flag: "🇫🇷",
-          openai: true,
-        },
-        {
-          id: "de",
-          label: "Alemán",
-          alias: "german de deutsch",
-          flag: "🇩🇪",
-          openai: true,
-        },
-        {
-          id: "it",
-          label: "Italiano",
-          alias: "italian it italiano",
-          flag: "🇮🇹",
-          openai: true,
-        },
-        {
-          id: "pt",
-          label: "Portugués",
-          alias: "portuguese pt português",
-          flag: "🇧🇷",
-          openai: true,
-        },
-        {
-          id: "ru",
-          label: "Ruso",
-          alias: "russian ru русский",
-          flag: "🇷🇺",
-          openai: true,
-        },
-        {
-          id: "ar",
-          label: "Árabe",
-          alias: "arabic ar العربية",
-          flag: "🇸🇦",
-          openai: true,
-        },
-        {
-          id: "hi",
-          label: "Hindi",
-          alias: "hindi hi हिन्दी",
-          flag: "🇮🇳",
-          openai: true,
-        },
-        {
-          id: "id",
-          label: "Indonesio",
-          alias: "indonesian id bahasa",
-          flag: "🇮🇩",
-          openai: true,
-        },
-        {
-          id: "th",
-          label: "Tailandés",
-          alias: "thai th ไทย",
-          flag: "🇹🇭",
-          openai: false,
-        },
-        {
-          id: "tr",
-          label: "Turco",
-          alias: "turkish tr türkçe",
-          flag: "🇹🇷",
-          openai: false,
-        },
-        {
-          id: "vi",
-          label: "Vietnamita",
-          alias: "vietnamese vi tiếng việt",
-          flag: "🇻🇳",
-          openai: false,
-        },
-        {
-          id: "nl",
-          label: "Neerlandés",
-          alias: "dutch nl nederlands",
-          flag: "🇳🇱",
-          openai: false,
-        },
-        {
-          id: "sv",
-          label: "Sueco",
-          alias: "swedish sv svenska",
-          flag: "🇸🇪",
-          openai: false,
-        },
-        {
-          id: "da",
-          label: "Danés",
-          alias: "danish da dansk",
-          flag: "🇩🇰",
-          openai: false,
-        },
-        {
-          id: "fi",
-          label: "Finlandés",
-          alias: "finnish fi suomi",
-          flag: "🇫🇮",
-          openai: false,
-        },
-        {
-          id: "pl",
-          label: "Polaco",
-          alias: "polish pl polski",
-          flag: "🇵🇱",
-          openai: false,
-        },
-        {
-          id: "cs",
-          label: "Checo",
-          alias: "czech cs čeština",
-          flag: "🇨🇿",
-          openai: false,
-        },
-        {
-          id: "fil",
-          label: "Filipino",
-          alias: "filipino fil tagalog",
-          flag: "🇵🇭",
-          openai: false,
-        },
-        {
-          id: "ms",
-          label: "Malayo",
-          alias: "malay ms bahasa melayu",
-          flag: "🇲🇾",
-          openai: false,
-        },
-        {
-          id: "no",
-          label: "Noruego",
-          alias: "norwegian no norsk",
-          flag: "🇳🇴",
-          openai: false,
-        },
-      ];
-
-      // ============================================================
-      // View switcher
-      // ============================================================
-      function show(viewId) {
-        if (viewId === currentView) return;
-        const next = document.getElementById(viewId);
-        if (!next) return;
-        const prev = document.querySelector(".view.active");
-        if (prev && prev !== next) {
-          // 退场 144ms (240 * 0.6), 新 view 在 84ms 时就开始 enter, 制造重叠丝滑感
-          prev.classList.remove("active");
-          prev.classList.add("exiting");
-          setTimeout(() => prev.classList.remove("exiting"), 150);
-          setTimeout(() => {
-            next.classList.add("active");
-          }, 90);
-        } else {
-          next.classList.add("active");
-        }
-        currentView = viewId;
-      }
-
-      function backToLanding() {
-        if (recording) stopMic("Sesión cerrada");
-        if (mode === "room") {
-          if (ws && ws.readyState === WebSocket.OPEN)
-            ws.send(JSON.stringify({ command: "leave_room" }));
-        }
-        mode = "idle";
-        roomState = null;
-        show("viewLanding");
-        refreshTrialStatus(); // 录音结束后回首页, 刷新试用次数显示
-      }
-
-      function enterSolo() {
-        mode = "solo";
-        show("viewSolo");
-        updateLangDisplay();
-      }
-
-      function leaveRoom() {
-        backToLanding();
-      }
-
-      // ============================================================
-      // WebSocket
-      // ============================================================
-      function connectWs() {
-        const proto = location.protocol === "https:" ? "wss" : "ws";
-        ws = new WebSocket(`${proto}://${location.host}/ws`);
-        ws.onopen = () => console.log("[ws] open");
-        ws.onclose = () => {
-          console.log("[ws] close, reconnect in 2s");
-          if (recording) stopMic("Conexión perdida");
-          setTimeout(connectWs, 2000);
-        };
-        ws.onerror = (e) => console.error("[ws] error", e);
-        ws.onmessage = (e) => {
-          try {
-            handleMessage(JSON.parse(e.data));
-          } catch (err) {
-            console.error("[ws] parse", err);
-          }
-        };
-      }
-
-      function send(obj) {
-        if (ws && ws.readyState === WebSocket.OPEN)
-          ws.send(JSON.stringify(obj));
-      }
-
-      function handleMessage(m) {
-        switch (m.type) {
-          case "welcome":
-            if (m.recording_id) currentRecordingId = m.recording_id;
-            break;
-          case "ready": {
-            const eng = "⚡ OpenAI";
-            onBackendReady(eng);
-            if (m.recording_id) currentRecordingId = m.recording_id;
-            break;
-          }
-          case "transcript":
-            handleSoloTranscript(m);
-            break;
-          case "translation":
-            handleSoloTranslation(m);
-            break;
-          case "audio":
-            playAudio(m.data, m.sample_rate);
-            break;
-          case "stopped":
-            setMicTitle("Detenido");
-            break;
-          case "config_updated":
-            // server confirms; no UI change needed
-            break;
-          case "error":
-            if (m.code === "trial_limit") {
-              if (recording) stopMic("Prueba gratuita agotada");
-              showTrialModal(m.used, m.limit);
-            } else {
-              toast(m.message || "Error");
-              if (recording) stopMic("Error");
-            }
-            break;
-          case "room_joined":
-            onRoomJoined(m);
-            break;
-          case "member_joined":
-            onMemberJoined(m);
-            break;
-          case "member_left":
-            onMemberLeft(m);
-            break;
-          case "room_message":
-            onRoomMessage(m);
-            break;
-          case "room_translation":
-            onRoomTranslation(m);
-            break;
-          case "speaking":
-            onSpeakingState(m);
-            break;
-          case "room_closed":
-            toast("La sala ha terminado");
-            backToLanding();
-            break;
-        }
-      }
-
-      // ============================================================
-      // SOLO transcript handling
-      // ============================================================
-      // Solo 字幕模式: 不展原文 / 不分段, 译文连续滚显. 同时维护 turn 边界 (1.5s 静默)
-      // 用于把每个 turn 上报到 server 持久化 (record_entry).
-      const TURN_GAP_MS = 1500;
-      let _soloTurn = null; // 当前活动 turn { src, tgt, lang, lastTime }
-      let _soloDoneTurns = []; // 已完成的 turn (用于字幕渲染历史)
-      let _soloRotateTimer = null; // 检测 turn 静默
-      let currentRecordingId = null; // 本次 session 的 recording id (来自 ready 消息)
-
-      function _newSoloTurn() {
-        return { src: "", tgt: "", lang: "", lastTime: Date.now() };
-      }
-
-      function _scheduleSoloRotate() {
-        if (_soloRotateTimer) clearTimeout(_soloRotateTimer);
-        _soloRotateTimer = setTimeout(_flushSoloTurn, TURN_GAP_MS);
-      }
-
-      function _flushSoloTurn() {
-        _soloRotateTimer = null;
-        if (!_soloTurn) return;
-        if (_soloTurn.src || _soloTurn.tgt) {
-          // 上报给 server 持久化
-          send({
-            command: "record_entry",
-            src: _soloTurn.src,
-            tgt: _soloTurn.tgt,
-            lang: _soloTurn.lang,
-          });
-          _soloDoneTurns.push(_soloTurn);
-        }
-        _soloTurn = null;
-        _renderSubtitles();
-      }
-
-      function handleSoloTranscript(m) {
-        if (m.final) {
-          if (_soloTurn && (_soloTurn.src || _soloTurn.tgt)) {
-            _flushSoloTurn();
-          }
-          _soloTurn = _newSoloTurn();
-          _soloTurn.src = m.text;
-          _soloTurn.complete = true; // 等 translation final 来补 tgt
-          if (m.lang) _soloTurn.lang = m.lang;
-          _soloTurn.lastTime = Date.now();
-          _scheduleSoloRotate();
-          _renderSubtitles();
-          return;
-        }
-        // incremental (OpenAI delta) → 累积; 但如果上一句已 complete (final), 先 flush 起新 turn
-        if (_soloTurn && _soloTurn.complete) {
-          _flushSoloTurn();
-        }
-        if (!_soloTurn) _soloTurn = _newSoloTurn();
-        if (m.incremental) _soloTurn.src += m.text;
-        else _soloTurn.src = m.text;
-        if (m.lang) _soloTurn.lang = m.lang;
-        _soloTurn.lastTime = Date.now();
-        _scheduleSoloRotate();
-        if (!_soloTurn.tgt) _renderSubtitles();
-      }
-
-      function handleSoloTranslation(m) {
-        if (!config.translate) return;
-        if (m.final) {
-          // 填到当前 (transcript final 已起 turn) 的 tgt
-          if (!_soloTurn) _soloTurn = _newSoloTurn();
-          _soloTurn.tgt = m.text;
-          _soloTurn.lastTime = Date.now();
-          _scheduleSoloRotate();
-          _renderSubtitles();
-          return;
-        }
-        // incremental — 同样检查 complete 起新
-        if (_soloTurn && _soloTurn.complete) {
-          _flushSoloTurn();
-        }
-        if (!_soloTurn) _soloTurn = _newSoloTurn();
-        if (m.incremental) _soloTurn.tgt += m.text;
-        else _soloTurn.tgt = m.text;
-        _soloTurn.lastTime = Date.now();
-        _scheduleSoloRotate();
-        _renderSubtitles();
-      }
-
-      // Apple Live Captions 风字幕状态 — 增量字符渲染, 避免每次 innerHTML 全量重建造成的闪烁
-      const _capState = {
-        renderedDoneCount: 0, // 已渲染到 DOM 的 done turn 数 (用于 diff)
-        currentText: "", // 已渲染到 .cap-current 的文本前缀
-        keptDoneEls: [], // 当前 DOM 中保留的 cap-old 元素 (限 3 条)
-      };
-
-      function _renderSubtitles() {
-        hideEmpty("soloTranscript");
-        document.getElementById("soloEmpty").style.display = "none";
-        const el = document.getElementById("subtitleText");
-        el.style.display = "flex";
-
-        // 1. done 区增量同步: 每多一条 done, 把当前 .cap-current "降级" 为 .cap-old
-        const newDoneCount = _soloDoneTurns.length;
-        if (newDoneCount > _capState.renderedDoneCount) {
-          const cur = el.querySelector(".cap-current");
-          if (cur) {
-            cur.classList.remove("cap-current", "cap-placeholder");
-            cur.classList.add("cap-old");
-            cur.style.animationDelay = ""; // 清掉残留
-            _capState.keptDoneEls.push(cur);
-          }
-          _capState.currentText = "";
-          _capState.renderedDoneCount = newDoneCount;
-          // 历史全部保留在 DOM, 用户可向上滚动 .transcript 查看
-          // (不再 fade-out 老句子)
-        }
-
-        // 2. 当前 turn 文本
-        let currentText = "";
-        let isPlaceholder = false;
-        if (_soloTurn) {
-          if (_soloTurn.tgt) {
-            currentText = _soloTurn.tgt;
-          } else if (_soloTurn.src) {
-            currentText = _soloTurn.src;
-            isPlaceholder = true;
-          }
-        }
-
-        let cur = el.querySelector(".cap-current");
-        if (currentText) {
-          if (!cur) {
-            cur = document.createElement("div");
-            cur.className = "cap-current";
-            el.appendChild(cur);
-            _capState.currentText = "";
-          }
-          cur.classList.toggle("cap-placeholder", isPlaceholder);
-
-          // 增量 diff
-          const old = _capState.currentText;
-          if (currentText === old) {
-            // no-op
-          } else if (currentText.startsWith(old)) {
-            // 追加新字符: OpenAI delta 流式高频到达, 不再 stagger, 来什么显什么
-            // (字符到达时间本身已经错开, 视觉就是流式打字效果)
-            const added = Array.from(currentText.slice(old.length));
-            added.forEach((ch) => {
-              const span = document.createElement("span");
-              span.className = "ch";
-              span.textContent = ch;
-              cur.appendChild(span);
-            });
-          } else {
-            // Non-contiguous text → full replace (src→tgt switch)
-            // 整段一次到位 → 逐字 stagger 浮出 (反正不是流式, 用户在乎"出现感")
-            cur.innerHTML = "";
-            Array.from(currentText).forEach((ch, i) => {
-              const span = document.createElement("span");
-              span.className = "ch";
-              span.textContent = ch;
-              span.style.animationDelay = i * 22 + "ms";
-              cur.appendChild(span);
-            });
-          }
-          _capState.currentText = currentText;
-        } else if (cur) {
-          // 当前文本清空了 (罕见)
-          cur.remove();
-          _capState.currentText = "";
-        }
-
-        // 3. cursor — 始终保持在末尾
-        let cursor = el.querySelector(".subtitle-cursor");
-        if (recording) {
-          if (!cursor) {
-            cursor = document.createElement("span");
-            cursor.className = "subtitle-cursor";
-          }
-          el.appendChild(cursor);
-        } else if (cursor) {
-          cursor.remove();
-        }
-
-        const c = document.getElementById("soloTranscript");
-        c.scrollTop = c.scrollHeight;
-      }
-
-      function _escapeHtml(s) {
-        return String(s).replace(
-          /[&<>"']/g,
-          (c) =>
-            ({
-              "&": "&amp;",
-              "<": "&lt;",
-              ">": "&gt;",
-              '"': "&quot;",
-              "'": "&#39;",
-            })[c],
-        );
-      }
-
-      function resetSoloBubbles() {
-        // 不清空字幕历史, 下次说话继续累加
-        // 但断当前 turn (强制上报最后一条, 然后开新 turn)
-        if (_soloRotateTimer) {
-          clearTimeout(_soloRotateTimer);
-          _soloRotateTimer = null;
-        }
-        _flushSoloTurn();
-      }
-
-      function clearSoloHistory() {
-        if (_soloRotateTimer) {
-          clearTimeout(_soloRotateTimer);
-          _soloRotateTimer = null;
-        }
-        _soloTurn = null;
-        _soloDoneTurns = [];
-        _capState.renderedDoneCount = 0;
-        _capState.currentText = "";
-        _capState.keptDoneEls = [];
-        document.getElementById("subtitleText").innerHTML = "";
-        document.getElementById("subtitleText").style.display = "none";
-        document.getElementById("soloEmpty").style.display = "flex";
-      }
-
-      function downloadCurrent() {
-        if (!currentRecordingId) {
-          toast("No hay grabaciones");
-          return;
-        }
-        window.open("/recordings/" + currentRecordingId + ".md", "_blank");
-      }
-
-      async function openHistory() {
-        showPanel("panelHistory");
-        const list = document.getElementById("historyList");
-        // 显 4 行 skeleton + shimmer 横扫, 数据到再 crossfade 真实内容
-        const skeletonHTML = Array(4)
-          .fill(0)
-          .map(
-            () => `<div class="record-skeleton">
-          <div class="sk-icon"></div>
-          <div class="sk-rows">
-            <div class="sk-bar sk-title"></div>
-            <div class="sk-bar sk-meta"></div>
-          </div>
-        </div>`,
-          )
-          .join("");
-        list.innerHTML = skeletonHTML;
-        try {
-          const r = await fetch("/recordings");
-          const items = await r.json();
-          if (!items.length) {
-            list.innerHTML = '<div class="record-empty">No hay grabaciones</div>';
-            return;
-          }
-          list.innerHTML = items
-            .map((it) => {
-              const d = new Date(it.created_at * 1000);
-              const dateStr = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-              const icon = it.kind === "room" ? "👥" : "🎙";
-              const name = (it.name || it.kind).replace(/</g, "&lt;");
-              return `<div class="record-item">
-        <div class="record-info">
-          <div class="record-name">${icon} ${name}</div>
-          <div class="record-meta">${dateStr} · ${it.count} entradas</div>
-        </div>
-        <a class="record-dl" href="/recordings/${it.id}.md" download title="Descargar">↓</a>
-        <button class="record-del" onclick="deleteRecording('${it.id}')" title="Eliminar">×</button>
-      </div>`;
-            })
-            .join("");
-        } catch (e) {
-          list.innerHTML = '<div class="record-empty">Error al cargar</div>';
-        }
-      }
-
-      async function deleteRecording(id) {
-        if (!confirm("¿Eliminar esta grabación?")) return;
-        try {
-          await fetch("/recordings/" + id, { method: "DELETE" });
-          openHistory();
-        } catch (e) {
-          toast("Error al eliminar");
-        }
-      }
-
-      function hideEmpty(containerId) {
-        const c = document.getElementById(containerId);
-        const e = c.querySelector(".empty-state");
-        if (e) e.style.display = "none";
-      }
-
-      function scrollDown(id) {
-        const e = document.getElementById(id);
-        e.scrollTop = e.scrollHeight;
-      }
-
-      // ============================================================
-      // ROOM message handling
-      // ============================================================
-      const roomTurns = new Map(); // turn_id -> {speaker_id, src, tgt}
-
-      function onRoomJoined(m) {
-        roomState = {
-          code: m.code,
-          name: m.room_name || "Sala",
-          members: m.members,
-          you: m.you,
-          myTarget: m.your_target || "ru",
-        };
-        document.getElementById("roomName").textContent = roomState.name;
-        document.getElementById("roomCode").textContent = m.code;
-        const lbl = COMMON_LANGS.find((l) => l.id === roomState.myTarget);
-        document.getElementById("roomMyTarget").textContent = lbl
-          ? lbl.label
-          : roomState.myTarget;
-        renderMembers();
-        document.getElementById("roomStream").innerHTML =
-          '<div class="empty-state"><div class="big">💬</div>Sala lista<br>Pulsa el micrófono para hablar</div>';
-        mode = "room";
-        show("viewRoom");
-        toast(`Conectado · Código ${m.code}`);
-      }
-
-      function onMemberJoined(m) {
-        if (!roomState) return;
-        roomState.members.push(m.member);
-        renderMembers();
-        toast(`${m.member.name} se unió`);
-      }
-
-      function onMemberLeft(m) {
-        if (!roomState) return;
-        const left = roomState.members.find((x) => x.id === m.id);
-        roomState.members = roomState.members.filter((x) => x.id !== m.id);
-        renderMembers();
-        if (left) toast(`${left.name} salió`);
-      }
-
-      function onSpeakingState(m) {
-        document.querySelectorAll(".av").forEach((el) => {
-          if (el.dataset.member === m.id) {
-            el.classList.toggle("speaking", !!m.speaking);
-          }
-        });
-      }
-
-      function renderMembers() {
-        if (!roomState) return;
-        const el = document.getElementById("roomMembers");
-        document.getElementById("roomMembersCount").textContent =
-          roomState.members.length;
-        let html = "";
-        for (const m of roomState.members) {
-          const cls = m.id === roomState.you ? "me" : "c" + (m.color ?? 0);
-          const initial =
-            m.id === roomState.you
-              ? "Yo"
-              : (m.name || "?").charAt(0).toUpperCase();
-          html += `<div class="av ${cls}" data-member="${m.id}" title="${m.name}">${initial}</div>`;
-        }
-        html += `<span class="who" id="memberWho">${roomState.members.map((x) => x.name).join(" · ")}</span>`;
-        html += `<button class="invite" onclick="copyRoomCode()">+ Invitar</button>`;
-        el.innerHTML = html;
-      }
-
-      function copyRoomCode() {
-        if (!roomState) return;
-        const url = `${location.origin}/?room=${roomState.code}`;
-        navigator.clipboard?.writeText(roomState.code).catch(() => {});
-        toast(`Código ${roomState.code} copiado`);
-      }
-
-      function onRoomMessage(m) {
-        hideEmpty("roomStream");
-        let turn = document.getElementById("turn-" + m.turn_id);
-        if (!turn) turn = createTurn(m);
-        const srcEl = turn.querySelector(".src-text");
-        // incremental=true (OpenAI delta): accumulate; final=true: full replace
-        if (m.incremental) srcEl.textContent = srcEl.textContent + m.text;
-        else srcEl.textContent = m.text;
-        // final 移除 cursor (turn 完成)
-        if (m.final) turn.classList.remove("live");
-        scrollDown("roomStream");
-      }
-
-      function onRoomTranslation(m) {
-        hideEmpty("roomStream");
-        let turn = document.getElementById("turn-" + m.turn_id);
-        if (!turn) {
-          turn = createTurn(m);
-        }
-        if (m.incremental) {
-          const cur = turn.querySelector(".tgt-text").textContent;
-          turn.querySelector(".tgt-text").textContent = cur + m.text;
-        } else {
-          turn.querySelector(".tgt-text").textContent = m.text;
-        }
-        if (m.final) turn.classList.remove("live");
-        else turn.classList.add("live");
-        scrollDown("roomStream");
-      }
-
-      function createTurn(m) {
-        const member = roomState?.members.find((x) => x.id === m.speaker_id);
-        const name = member?.name || m.speaker_name || "?";
-        const color = member?.color ?? 0;
-        const ts = new Date().toTimeString().slice(0, 8);
-        const turn = document.createElement("div");
-        turn.className = "turn live";
-        turn.id = "turn-" + m.turn_id;
-        turn.innerHTML = `
-    <div class="col-av">
-      <div class="av c${color}" data-member="${m.speaker_id}">${(name || "?").charAt(0).toUpperCase()}</div>
-    </div>
-    <div class="col-body">
-      <div class="head-line">
-        <span class="name c${color}">${name}</span>
-        <span class="lang-tag-mini">${(m.src_lang || "").toUpperCase()}</span>
-        <span class="ts">${ts}</span>
-      </div>
-      <div class="src-text"></div>
-      <div class="tgt-text"></div>
-    </div>
-  `;
-        document.getElementById("roomStream").appendChild(turn);
-        return turn;
-      }
-
-
-      // ============================================================
-      // Lang cycling (顶部 lang chip)
-      // ============================================================
-      let _langPickerWhich = null; // 'src' | 'tgt' 当前在选哪个
-
-      function openLangPicker(which) {
-        _langPickerWhich = which;
-        document.getElementById("langPickerTitle").textContent =
-          which === "src" ? "🎤 Idioma de entrada" : "🌐 Traducir a";
-        document.getElementById("langSearchInput").value = "";
-        renderLangList();
-        showPanel("panelLang");
-      }
-
-      function renderLangList() {
-        const q = (document.getElementById("langSearchInput").value || "")
-          .trim()
-          .toLowerCase();
-        const which = _langPickerWhich;
-        const current = which === "src" ? config.lang : config.target;
-        // 按当前引擎过滤候选: OpenAI 模式 target 只列 13 种, src 不限 (Qwen ASR 支持 26 种)
-        const items = COMMON_LANGS.filter((l) => {
-          if (which === "tgt" && l.id === "auto") return false;
-          if (which === "tgt" && config.engine === "openai" && !l.openai)
-            return false;
-          if (!q) return true;
-          return (
-            l.label.toLowerCase().includes(q) ||
-            l.id.toLowerCase().includes(q) ||
-            (l.alias || "").toLowerCase().includes(q)
-          );
-        });
-        // 子标题: 当前引擎下的可选总数
-        const totalForEngine = COMMON_LANGS.filter((l) => {
-          if (which === "tgt" && l.id === "auto") return false;
-          if (which === "tgt" && config.engine === "openai" && !l.openai)
-            return false;
-          return true;
-        }).length;
-        const engineLabel = "⚡ OpenAI";
-        document.getElementById("langPickerTitle").innerHTML =
-          (which === "src" ? "🎤 Idioma de entrada" : "🌐 Traducir a") +
-          ` <span style="font-family:var(--mono);font-size:11px;color:var(--dim);font-weight:400">${engineLabel} · ${totalForEngine}</span>`;
-        const html = items
-          .map((l) => {
-            const isCur = l.id === current;
-            const showFastBadge = false;
-            return `<div onclick="selectLang('${l.id}')"
-      style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid var(--line);cursor:pointer;${isCur ? "background:var(--paper-2);" : ""}">
-      <span style="font-size:22px">${l.flag}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:${isCur ? 700 : 500};font-size:14px;color:var(--ink)">${l.label}</div>
-        ${showFastBadge ? '<div style="font-family:var(--mono);font-size:10px;color:var(--orange);margin-top:2px">⚡ OpenAI disponible</div>' : ""}
-      </div>
-      <span style="font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase">${l.id}</span>
-      ${isCur ? '<span style="color:var(--orange);font-weight:700">✓</span>' : ""}
-    </div>`;
-          })
-          .join("");
-        document.getElementById("langList").innerHTML =
-          html ||
-          '<div style="text-align:center;padding:24px;color:var(--dim)">No se encontró el idioma</div>';
-      }
-
-      function selectLang(code) {
-        const which = _langPickerWhich;
-        if (which === "src") config.lang = code;
-        else config.target = code;
-        updateLangDisplay();
-        pushConfig();
-        closeOverlay();
-      }
-
-      function swapLangs() {
-        const t = config.lang;
-        config.lang = config.target === "ru" ? "en" : config.target;
-        config.target = t === "auto" ? "ru" : t;
-        updateLangDisplay();
-        pushConfig();
-      }
-
-      function updateLangDisplay() {
-        const srcL = COMMON_LANGS.find((l) => l.id === config.lang);
-        const tgtL = COMMON_LANGS.find((l) => l.id === config.target);
-        const sl = document.getElementById("srcLabel");
-        if (sl) sl.textContent = srcL?.label || config.lang;
-        const tl = document.getElementById("tgtLabel");
-        if (tl) tl.textContent = tgtL?.label || config.target;
-        const sf = document.getElementById("srcFlag");
-        if (sf) sf.textContent = srcL?.flag || "🌐";
-        const tf = document.getElementById("tgtFlag");
-        if (tf) tf.textContent = tgtL?.flag || "🌐";
-        // 同步 settings 下拉
-        const sa = document.getElementById("setAsrLang");
-        if (sa) sa.value = config.lang;
-        const st = document.getElementById("setTargetLang");
-        if (st) st.value = config.target;
-      }
-
-      // ============================================================
-      // pushConfig — 关键修复: 不读 DOM, 直接送 config
-      // ============================================================
-      function pushConfig() {
-        // 从 toggles 同步两个 boolean(它们没 form-group input)
-        const tt = document.getElementById("toggleTranslate");
-        const tts = document.getElementById("toggleTts");
-        if (tt) config.translate = tt.classList.contains("on");
-        if (tts) config.tts = tts.classList.contains("on");
-        send({ command: "update_config", ...config });
-      }
-
-      // ============================================================
-      // Mic
-      // ============================================================
-      async function toggleMic() {
-        const b =
-          mode === "room"
-            ? document.getElementById("micRoom")
-            : document.getElementById("micSolo");
-        const uiRecording = b.classList.contains("recording");
-        if (recording || uiRecording) {
-          stopMic();
-          return;
-        }
-        try {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const actualRate = audioCtx.sampleRate;
-          micStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              channelCount: { ideal: 1 },
-              echoCancellation: true,
-              noiseSuppression: true,
-            },
-          });
-
-          let waited = 0;
-          while (!ws || ws.readyState !== WebSocket.OPEN) {
-            if (waited++ > 10) throw new Error("WS connection timeout");
-            await new Promise((r) => setTimeout(r, 500));
-          }
-
-          if (mode === "solo") {
-            send({ command: "start", ...config });
-            resetSoloBubbles();
-          } else if (mode === "room") {
-            send({ command: "speak_start" });
-          }
-
-          mic = audioCtx.createMediaStreamSource(micStream);
-          audioProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
-          mic.connect(audioProcessor);
-          audioProcessor.connect(audioCtx.destination);
-          audioProcessor.onaudioprocess = (e) => {
-            if (!recording || !backendReady) return;
-            if (vadInstance && !vadGate) return; // VAD 判定非语音, 跳过 (抑制 ASR 幻觉)
-      if (vadInstance && !vadGate) return;  // VAD 判定非语音, 跳过 (抑制 ASR 幻觉)
-            const inp = e.inputBuffer.getChannelData(0);
-            let s = inp;
-            if (actualRate !== TARGET_RATE && actualRate > 0) {
-              const ratio = actualRate / TARGET_RATE;
-              const ol = Math.floor(inp.length / ratio);
-              s = new Float32Array(ol);
-              for (let i = 0; i < ol; i++) {
-                const si = i * ratio,
-                  fl = Math.floor(si),
-                  fr = si - fl;
-                const a = inp[fl] || 0,
-                  b2 = inp[fl + 1] || a;
-                s[i] = a + (b2 - a) * fr;
-              }
-            }
-            const pcm = new Int16Array(s.length);
-            for (let i = 0; i < s.length; i++)
-              pcm[i] = Math.max(-32768, Math.min(32767, s[i] * 32768));
-            const bytes = new Uint8Array(pcm.buffer);
-            const chunks = [];
-            const C = 4096;
-            for (let i = 0; i < bytes.length; i += C)
-              chunks.push(
-                String.fromCharCode.apply(null, bytes.subarray(i, i + C)),
-              );
-            send({ command: "audio", data: btoa(chunks.join("")) });
-          };
-
-          recording = true;
-          backendReady = false;
-          b.classList.add("connecting");
-          playMicBurst(b);
-          setMicTitle("⏳ Conectando...", true);
-          showBusyBanner("Conectando al servidor...");
-          startVAD(); // 后台并行启动, init 期间 vadInstance===null 不门控
-        } catch (err) {
-          console.error("[mic] error", err);
-          cleanupMic();
-          toast(err.message || "Micrófono no disponible");
-        }
-      }
-
-      function stopMic(label = "Detenido") {
-        cleanupMic();
-        document.querySelectorAll(".mic").forEach((b) => {
-          b.classList.remove("recording");
-          b.classList.remove("connecting");
-        });
-        hideBusyBanner();
-        setMicTitle(label);
-        if (mode === "solo") {
-          send({ command: "stop" });
-        } else if (mode === "room") {
-          send({ command: "speak_stop" });
-        }
-      }
-
-      function cleanupMic() {
-        recording = false;
-        backendReady = false;
-        stopWaveViz(); // 先断 analyser, 再清 mic
-        if (audioProcessor) {
-          try {
-            audioProcessor.disconnect();
-          } catch (e) {}
-          audioProcessor = null;
-        }
-        if (mic) {
-          try {
-            mic.disconnect();
-          } catch (e) {}
-          mic = null;
-        }
-        if (micStream) {
-          micStream.getTracks().forEach((t) => t.stop());
-          micStream = null;
-        }
-        if (audioCtx) {
-          try {
-            audioCtx.close();
-          } catch (e) {}
-          audioCtx = null;
-        }
-        stopVAD();
-      }
-
-      async function startVAD() {
-        if (vadInstance) return; // 已在跑
-        if (!window.vad || !window.vad.MicVAD) {
-          console.warn("[vad] library not loaded — no gating (passthrough)");
-          if (typeof toast === "function")
-            toast("⚠ VAD not loaded — still usable");
-          vadInstance = null;
-          vadGate = true;
-          return;
-        }
-        try {
-          vadGate = true; // init 期间直通, 不要吞掉头几句
-          vadSilentCount = 0;
-          if (typeof toast === "function") toast("⏳ VAD loading...");
-          // 用 onFrameProcessed 自实现 hysteresis: 单帧概率快速开门, 多帧静音才关门。
-          // 绕开 ricky 库内部 segment 状态机的 preSpeechPad/redemption 延迟, 让 ASR 听到 speech 开头。
-          const inst = await window.vad.MicVAD.new({
-            baseAssetPath:
-              "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/",
-            onnxWASMBasePath:
-              "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
-            onFrameProcessed: (probs) => {
-              if (probs.isSpeech > VAD_POS) {
-                vadGate = true;
-                vadSilentCount = 0;
-              } else if (probs.isSpeech < VAD_NEG) {
-                vadSilentCount++;
-                if (vadSilentCount > VAD_SILENT_OFF) vadGate = false;
-              }
-            },
-          });
-          await inst.start();
-          vadInstance = inst;
-          console.log("[vad] ready");
-          if (typeof toast === "function") toast("✓ VAD ready");
-        } catch (e) {
-          console.error("[vad] init failed — passthrough", e);
-          if (typeof toast === "function")
-            toast("⚠ VAD load failed — still usable");
-          vadInstance = null;
-          vadGate = true;
-        }
-      }
-
-      async function stopVAD() {
-        const inst = vadInstance;
-        vadInstance = null;
-        vadGate = true;
-        vadSilentCount = 0;
-        if (inst) {
-          try {
-            await inst.pause();
-          } catch (e) {}
-          try {
-            inst.destroy && inst.destroy();
-          } catch (e) {}
-        }
-      }
-
-      // mic 启用瞬间 burst: scale spring + 外扩光环, 一次性 600ms
-      function playMicBurst(btn) {
-        if (!btn) return;
-        btn.classList.remove("just-started");
-        // 清理可能残留的 ring
-        const old = btn.querySelector(".mic-burst-ring");
-        if (old) old.remove();
-        // force reflow 重启 animation
-        void btn.offsetWidth;
-        btn.classList.add("just-started");
-        const ring = document.createElement("div");
-        ring.className = "mic-burst-ring";
-        btn.appendChild(ring);
-        setTimeout(() => {
-          btn.classList.remove("just-started");
-          ring.remove();
-        }, 620);
-      }
-
-      function setMicTitle(s, warn = false) {
-        const a = document.getElementById("micSoloTitle");
-        const b = document.getElementById("micRoomTitle");
-        [a, b].forEach((el) => {
-          if (!el) return;
-          el.textContent = s;
-          el.classList.toggle("warn", warn);
-        });
-      }
-
-      function showBusyBanner(text) {
-        const el = document.getElementById("busyBanner");
-        const tx = document.getElementById("busyBannerText");
-        if (tx && text) tx.textContent = text;
-        if (el) el.classList.add("show");
-      }
-
-      function hideBusyBanner() {
-        const el = document.getElementById("busyBanner");
-        if (el) el.classList.remove("show");
-      }
-
-      // 后端 ready 回调: connecting → recording
-      function onBackendReady(engLabel) {
-        backendReady = true;
-        document.querySelectorAll(".mic.connecting").forEach((b) => {
-          b.classList.remove("connecting");
-          b.classList.add("recording");
-        });
-        hideBusyBanner();
-        setMicTitle(`${engLabel || ""} · Grabando`.trim(), false);
-        startWaveViz();
-      }
-
-      // ============================================================
-      // 真实 FFT 音波 (Web Audio AnalyserNode)
-      // ============================================================
-      const WAVE_BARS = 24;
-      let _audioAnalyser = null;
-      let _vizRafId = null;
-
-      function _ensureWaveBars(containerId) {
-        const el = document.getElementById(containerId);
-        if (!el) return null;
-        if (el.children.length !== WAVE_BARS) {
-          el.innerHTML = "";
-          for (let i = 0; i < WAVE_BARS; i++) {
-            const b = document.createElement("div");
-            b.className = "wave-bar";
-            el.appendChild(b);
-          }
-        }
-        return el;
-      }
-
-      function startWaveViz() {
-        if (!audioCtx || !mic) return;
-        if (_audioAnalyser) return; // 已在跑
-        // 找当前可见的容器 (solo 或 room)
-        const containerId = mode === "room" ? "waveRoom" : "waveSolo";
-        const el = _ensureWaveBars(containerId);
-        if (!el) return;
-        el.classList.add("live");
-        try {
-          _audioAnalyser = audioCtx.createAnalyser();
-          _audioAnalyser.fftSize = 64; // → 32 bin, 取前 24
-          _audioAnalyser.smoothingTimeConstant = 0.72;
-          mic.connect(_audioAnalyser);
-        } catch (e) {
-          console.error("[wave-viz] analyser init failed", e);
-          el.classList.remove("live");
-          return;
-        }
-        const buf = new Uint8Array(_audioAnalyser.frequencyBinCount);
-        const bars = el.querySelectorAll(".wave-bar");
-        const tick = () => {
-          if (!_audioAnalyser) return;
-          _audioAnalyser.getByteFrequencyData(buf);
-          for (let i = 0; i < bars.length; i++) {
-            // 0-255 → 0-1, 最小 0.06 让静态时也有底
-            const v = (buf[i] || 0) / 255;
-            const s = 0.06 + v * 0.94;
-            bars[i].style.transform = `scaleY(${s})`;
-          }
-          _vizRafId = requestAnimationFrame(tick);
-        };
-        tick();
-      }
-
-      function stopWaveViz() {
-        if (_vizRafId) cancelAnimationFrame(_vizRafId);
-        _vizRafId = null;
-        if (_audioAnalyser) {
-          try {
-            _audioAnalyser.disconnect();
-          } catch (e) {}
-        }
-        _audioAnalyser = null;
-        document.querySelectorAll(".wave-viz").forEach((el) => {
-          el.classList.remove("live");
-          el.querySelectorAll(".wave-bar").forEach((b) => {
-            b.style.transform = "scaleY(0.06)";
-          });
-        });
-      }
-
-      function playAudio(b64, sr) {
-        try {
-          const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-          const pcm = new Int16Array(bytes.buffer);
-          let ctx;
-          try {
-            ctx = new (window.AudioContext || window.webkitAudioContext)({
-              sampleRate: sr,
-            });
-          } catch {
-            ctx = new (window.AudioContext || window.webkitAudioContext)();
-          }
-          const ar = ctx.sampleRate;
-          let s = Array.from(pcm).map((v) => v / 32768);
-          if (ar !== sr) {
-            const ratio = sr / ar;
-            const nl = Math.round(pcm.length * ratio);
-            const r = new Float32Array(nl);
-            for (let i = 0; i < nl; i++) {
-              const si = i / ratio,
-                fl = Math.floor(si),
-                fr = si - fl;
-              const a = s[fl] || 0,
-                b = s[fl + 1] || a;
-              r[i] = a + (b - a) * fr;
-            }
-            s = r;
-          }
-          const buf = ctx.createBuffer(1, s.length, ar);
-          buf.getChannelData(0).set(s);
-          const src = ctx.createBufferSource();
-          src.buffer = buf;
-          src.connect(ctx.destination);
-          src.start();
-        } catch (e) {
-          console.error("playAudio", e);
-        }
-      }
-
-      // ============================================================
-      // Modals
-      // ============================================================
-      function openSettings() {
-        showPanel("panelSettings");
-      }
-      function openCreateRoom() {
-        showPanel("panelCreate");
-      }
-      function openJoinRoom() {
-        showPanel("panelJoin");
-      }
-      function showPanel(id) {
-        document
-          .querySelectorAll("#overlay .panel")
-          .forEach((p) => (p.style.display = "none"));
-        document.getElementById(id).style.display = "block";
-        document.getElementById("overlay").classList.add("show");
-      }
-      function closeOverlay() {
-        const ov = document.getElementById("overlay");
-        ov.classList.add("closing");
-        setTimeout(() => {
-          ov.classList.remove("show", "closing");
-        }, 150);
-      }
-
-      function doCreateRoom() {
-        const name =
-          document.getElementById("createName").value.trim() || "Sala";
-        const nick = document.getElementById("createNick").value.trim() || "Yo";
-        const target = document.getElementById("createTarget").value || "ru";
-        config.target = target;
-        closeOverlay();
-        send({ command: "create_room", room_name: name, name: nick, target });
-      }
-
-      function doJoinRoom() {
-        const code = document
-          .getElementById("joinCode")
-          .value.trim()
-          .toUpperCase();
-        if (!code) {
-          toast("Ingresa el código");
-          return;
-        }
-        const nick = document.getElementById("joinNick").value.trim() || "Yo";
-        const target = document.getElementById("joinTarget").value || "ru";
-        config.target = target;
-        closeOverlay();
-        send({ command: "join_room", code, name: nick, target });
-      }
-
-      function exportRoom() {
-        if (!roomState) return;
-        window.open(`/export?code=${roomState.code}`, "_blank");
-      }
-
-      // ============================================================
-      // Toast
-      // ============================================================
-      // ============================================================
-      // Trial limit 弹框
-      // ============================================================
-      function showTrialModal(used, limit) {
-        const el = document.getElementById("trialModal");
-        const cnt = document.getElementById("trialCount");
-        if (cnt && used != null && limit != null) {
-          cnt.textContent = `${used} / ${limit} usados`;
-        }
-        if (el) {
-          el.classList.remove("closing");
-          el.classList.add("show");
-        }
-      }
-      function closeTrialModal() {
-        const el = document.getElementById("trialModal");
-        if (!el) return;
-        el.classList.add("closing");
-        setTimeout(() => el.classList.remove("show", "closing"), 150);
-      }
-
-      let _toastTimer;
-      let _toastHideTimer;
-      function toast(msg) {
-        const t = document.getElementById("toast");
-        t.textContent = msg;
-        t.classList.remove("hiding");
-        // force reflow 让 animation 重新触发 (连续 toast 时)
-        if (t.classList.contains("show")) {
-          t.classList.remove("show");
-          void t.offsetWidth;
-        }
-        t.classList.add("show");
-        clearTimeout(_toastTimer);
-        clearTimeout(_toastHideTimer);
-        _toastTimer = setTimeout(() => {
-          t.classList.add("hiding");
-          _toastHideTimer = setTimeout(() => {
-            t.classList.remove("show", "hiding");
-          }, 180);
-        }, 2400);
-      }
-
-      // ============================================================
-      // Auth
-      // ============================================================
-      let currentUser = null;
-
-      function switchAuthTab(tab) {
-        const tabs = document.getElementById("authTabs");
-        if (tabs) tabs.dataset.active = tab;
-        document.querySelectorAll(".auth-tab").forEach((b) => {
-          b.classList.toggle("active", b.dataset.tab === tab);
-        });
-        const loginPane = document.getElementById("authLoginPane");
-        const regPane = document.getElementById("authRegisterPane");
-        if (tab === "login") {
-          loginPane.style.display = "block";
-          regPane.style.display = "none";
-        } else {
-          loginPane.style.display = "none";
-          regPane.style.display = "block";
-        }
-      }
-
-      async function doRegister() {
-        const email = document.getElementById("regEmail").value.trim();
-        const nickname = document.getElementById("regNick").value.trim();
-        const pwd = document.getElementById("regPwd").value;
-        if (!email || !pwd) {
-          toast("Correo y contraseña son obligatorios");
-          return;
-        }
-        if (pwd.length < 6) {
-          toast("Mínimo 6 caracteres");
-          return;
-        }
-        try {
-          const r = await fetch("/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password: pwd, nickname }),
-          });
-          if (!r.ok) {
-            const e = await r.json().catch(() => ({}));
-            toast(e.detail || "Error en el registro");
-            return;
-          }
-          const data = await r.json();
-          currentUser = data.user;
-          toast("Registro exitoso, bienvenido " + (data.user.nickname || data.user.email));
-          onAuthSuccess();
-        } catch (e) {
-          toast("Error de red");
-        }
-      }
-
-      async function doLogin() {
-        const email = document.getElementById("loginEmail").value.trim();
-        const pwd = document.getElementById("loginPwd").value;
-        if (!email || !pwd) {
-          toast("Correo y contraseña son obligatorios");
-          return;
-        }
-        try {
-          const r = await fetch("/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password: pwd }),
-          });
-          if (!r.ok) {
-            const e = await r.json().catch(() => ({}));
-            toast(e.detail || "Error al iniciar sesión");
-            return;
-          }
-          const data = await r.json();
-          currentUser = data.user;
-          onAuthSuccess();
-        } catch (e) {
-          toast("Error de red");
-        }
-      }
-
-      async function doLogout() {
-        try {
-          await fetch("/auth/logout", { method: "POST" });
-        } catch (e) {}
-        currentUser = null;
-        currentRecordingId = null;
-        if (ws) {
-          try {
-            ws.close();
-          } catch (e) {}
-          ws = null;
-        }
-        show("viewAuth");
-        toast("Sesión cerrada");
-      }
-
-      function onAuthSuccess() {
-        show("viewLanding");
-        renderUserBadge();
-        connectWs();
-      }
-
-      function renderUserBadge() {
-        const subEl = document.querySelector("#viewLanding .hero .sub");
-        if (!subEl || !currentUser) return;
-        const trial = currentUser.trial;
-        let trialPill = "";
-        if (trial && trial.limit) {
-          const remain = Math.max(0, trial.limit - trial.used);
-          const cls = remain === 0 ? "trial-pill empty" : "trial-pill";
-          trialPill = `<span class="${cls}" title="Usos restantes">Prueba ${remain}/${trial.limit}</span>`;
-        }
-        subEl.innerHTML = `Hola, <b>${escapeHtml(currentUser.nickname)}</b>${trialPill} · <a onclick="doLogout()" style="color:var(--orange);cursor:pointer;text-decoration:underline">Salir</a>`;
-      }
-
-      async function refreshTrialStatus() {
-        try {
-          const r = await fetch("/auth/me");
-          if (r.ok) {
-            currentUser = await r.json();
-            renderUserBadge();
-          }
-        } catch (e) {}
-      }
-
-      function escapeHtml(s) {
-        return String(s).replace(
-          /[&<>"']/g,
-          (c) =>
-            ({
-              "&": "&amp;",
-              "<": "&lt;",
-              ">": "&gt;",
-              '"': "&quot;",
-              "'": "&#39;",
-            })[c],
-        );
-      }
-
-      // ============================================================
-      // Init
-      // ============================================================
-      async function init() {
-        // 填充 lang selects
-        const opts = COMMON_LANGS.map(
-          (l) => `<option value="${l.id}">${l.label}</option>`,
-        ).join("");
-        ["setAsrLang", "setTargetLang", "createTarget", "joinTarget"].forEach(
-          (id) => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            if (id === "setAsrLang") el.innerHTML = opts;
-            else
-              el.innerHTML = COMMON_LANGS.filter((l) => l.id !== "auto")
-                .map((l) => `<option value="${l.id}">${l.label}</option>`)
-                .join("");
-            if (id.includes("Target")) el.value = "ru";
-            if (id === "setAsrLang") el.value = "auto";
-          },
-        );
-
-
-        // 绑定 onchange
-        ["setAsrLang", "setTargetLang"].forEach((id) => {
-          const el = document.getElementById(id);
-          if (!el) return;
-          el.onchange = () => {
-            if (id === "setAsrLang") config.lang = el.value;
-            else if (id === "setTargetLang") config.target = el.value;
-            updateLangDisplay();
-            pushConfig();
-          };
-        });
-
-        updateLangDisplay();
-
-        // 检查登录状态
-        try {
-          const r = await fetch("/auth/me");
-          if (r.ok) {
-            currentUser = await r.json();
-            onAuthSuccess();
-          } else if (r.status === 404 && window.__startDemo) {
-            window.__startDemo();
-          } else {
-            show("viewAuth");
-          }
-        } catch (e) {
-          if (window.__startDemo) { window.__startDemo(); } else { show("viewAuth"); }
-        }
-
-        // URL ?room=XXX (登录后自动弹加入)
-        const params = new URLSearchParams(location.search);
-        const roomCode = params.get("room");
-        if (roomCode && currentUser) {
-          document.getElementById("joinCode").value = roomCode.toUpperCase();
-          setTimeout(() => openJoinRoom(), 400);
-        }
-      }
-
-      /* init deferred */
-    
-/* ===== DEMO MODE: activa solo sin backend; en produccion no interfiere ===== */
-var DEMO=false; var _demoTimers=[];
-function _dt(fn,ms){var t=setTimeout(fn,ms);_demoTimers.push(t);return t;}
-var _origConnectWs=connectWs,_origToggleMic=toggleMic,_origOpenHistory=openHistory,_origDownloadCurrent=downloadCurrent,_origExportRoom=exportRoom,_origDoLogin=doLogin,_origDoRegister=doRegister;
-window.__startDemo=function(){DEMO=true;currentUser={nickname:'Tú',email:'demo@local',trial:{used:1,limit:3}};onAuthSuccess();};
-connectWs=function(){ if(!DEMO) return _origConnectWs(); ws={readyState:1,send:function(s){try{_handleDemoCmd(JSON.parse(s));}catch(e){}}}; };
-toggleMic=function(){ if(!DEMO) return _origToggleMic(); _demoToggleMic(); };
-doLogin=function(){ if(!DEMO) return _origDoLogin(); currentUser={nickname:(document.getElementById('loginEmail').value||'Tú').split('@')[0],email:'demo',trial:{used:1,limit:3}};onAuthSuccess(); };
-doRegister=function(){ if(!DEMO) return _origDoRegister(); currentUser={nickname:(document.getElementById('regNick').value||'Tú'),email:'demo',trial:{used:0,limit:3}};onAuthSuccess(); };
-downloadCurrent=function(){ if(!DEMO) return _origDownloadCurrent(); toast('Descarga disponible al desplegar tu servidor'); };
-exportRoom=function(){ if(!DEMO) return _origExportRoom(); toast('Exportar disponible al desplegar tu servidor'); };
-openHistory=function(){ if(!DEMO) return _origOpenHistory(); showPanel('panelHistory'); var recs=[{i:'🎙',n:'Charla con Yuki',m:'Hoy 14:32 · 12 entradas'},{i:'👥',n:'Sala — Café de idiomas',m:'Ayer 19:10 · 47 entradas'},{i:'🎙',n:'Práctica de ruso',m:'12 jun · 8 entradas'}]; document.getElementById('historyList').innerHTML=recs.map(function(r){ return `<div class='record-item'><div class='record-info'><div class='record-name'>${r.i} ${r.n}</div><div class='record-meta'>${r.m}</div></div><a class='record-dl' onclick='toast(&quot;Demo&quot;)'>↓</a><button class='record-del' onclick='this.parentNode.remove()'>×</button></div>`; }).join(''); };
-function _demoToggleMic(){ var b=(mode==='room')?document.getElementById('micRoom'):document.getElementById('micSolo'); if(recording){ _demoStop(); return; } recording=true; backendReady=false; b.classList.add('connecting'); playMicBurst(b); setMicTitle('⏳ Conectando...',true); showBusyBanner('Conectando...'); if(mode==='solo') resetSoloBubbles(); _dt(function(){ if(!recording) return; handleMessage({type:'ready',recording_id:'demo-'+Date.now()}); _demoWaveStart(); if(mode==='solo') _demoSoloSpeak(0); else _demoMyRoomTurn(); },800); }
-function _demoStop(){ recording=false; backendReady=false; document.querySelectorAll('.mic').forEach(function(x){x.classList.remove('recording','connecting');}); hideBusyBanner(); setMicTitle('Detenido'); _demoWaveStop(); if(mode==='solo'){ resetSoloBubbles(); } }
-var _demoWaveRaf=null;
-function _demoWaveStart(){ var id=(mode==='room')?'waveRoom':'waveSolo'; var el=document.getElementById(id); if(!el) return; if(el.children.length!==24){el.innerHTML='';for(var i=0;i<24;i++){var d=document.createElement('div');d.className='wave-bar';el.appendChild(d);}} el.classList.add('live'); var bars=el.querySelectorAll('.wave-bar'); var t=0; function tick(){ if(!recording){return;} t+=0.08; for(var i=0;i<bars.length;i++){ var base=Math.abs(Math.sin(t*1.6+i*0.5)); var n=Math.random()*0.5; var s=0.08+Math.min(1,(base*0.7+n))*0.9; bars[i].style.transform='scaleY('+s.toFixed(3)+')'; } _demoWaveRaf=requestAnimationFrame(tick); } tick(); }
-function _demoWaveStop(){ if(_demoWaveRaf)cancelAnimationFrame(_demoWaveRaf); _demoWaveRaf=null; document.querySelectorAll('.wave-viz').forEach(function(el){el.classList.remove('live');el.querySelectorAll('.wave-bar').forEach(function(b){b.style.transform='scaleY(0.06)';});}); }
-var _soloScript=[ {src:'Hola, me alegra mucho hablar contigo hoy.',tgt:'Привет, я очень рад поговорить с тобой сегодня.',lang:'es'}, {src:'¿Qué te gusta hacer en tu tiempo libre?',tgt:'Чем тебе нравится заниматься в свободное время?',lang:'es'}, {src:'Me encanta aprender idiomas con amigos de todo el mundo.',tgt:'Мне нравится учить языки с друзьями со всего мира.',lang:'es'} ];
-function _streamWords(text,emit,doneCb){ var words=text.split(' '); var i=0; (function step(){ if(!recording){return;} if(i<words.length){ emit((i===0?'':' ')+words[i],false); i++; _dt(step,95+Math.random()*70); } else { emit(text,true); if(doneCb)_dt(doneCb,40); } })(); }
-function _demoSoloSpeak(idx){ if(!recording) return; if(idx>=_soloScript.length){ _dt(function(){_demoSoloSpeak(0);},2600); return; } var turn=_soloScript[idx]; _streamWords(turn.src,function(t,fin){ if(!fin) handleSoloTranscript({text:t,incremental:true,lang:turn.lang}); }, function(){ _streamWords(turn.tgt,function(t,fin){ if(!fin) handleSoloTranslation({text:t,incremental:true}); }, function(){ handleSoloTranscript({text:turn.src,final:true,lang:turn.lang}); handleSoloTranslation({text:turn.tgt,final:true}); _dt(function(){_demoSoloSpeak(idx+1);},1500); }); }); }
-var _friends=[ {id:'fy',name:'Yuki',color:1,lang:'JA',lines:[{src:'こんにちは！元気にしてた？',tgt:'¡Hola! ¿Cómo has estado?'},{src:'週末は何をしましたか？',tgt:'¿Qué hiciste el fin de semana?'},{src:'その料理、美味しそうですね！',tgt:'¡Ese plato se ve delicioso!'}]}, {id:'fd',name:'Dmitri',color:2,lang:'RU',lines:[{src:'Привет, друзья! Рад вас видеть.',tgt:'¡Hola, amigos! Me alegra verlos.'},{src:'Как проходит ваш день?',tgt:'¿Cómo va su día?'},{src:'Давайте говорить по-испански сегодня.',tgt:'Hablemos en español hoy.'}]}, {id:'fa',name:'Amara',color:3,lang:'EN',lines:[{src:'Hey everyone, this group is so much fun!',tgt:'Hola a todos, ¡este grupo es muy divertido!'},{src:'Your Spanish is getting really good.',tgt:'Tu español está mejorando mucho.'}]} ];
-var _ambIdx=0; var _ambTimer=null;
-function _streamRoomTurn(speakerId,name,color,lang,src,tgt,whenDone){ var turnId='t'+Date.now()+Math.floor(Math.random()*999); onSpeakingState({id:speakerId,speaking:true}); var sw=src.split(' '),i=0; (function step(){ if(mode!=='room'){return;} if(i<sw.length){ onRoomMessage({turn_id:turnId,speaker_id:speakerId,speaker_name:name,src_lang:lang,text:(i===0?'':' ')+sw[i],incremental:true}); i++; _ambTimer=setTimeout(step,70+Math.random()*60); } else { onRoomMessage({turn_id:turnId,speaker_id:speakerId,text:src,final:true}); var tw=tgt.split(' '),j=0; (function tstep(){ if(mode!=='room'){return;} if(j<tw.length){ onRoomTranslation({turn_id:turnId,speaker_id:speakerId,text:(j===0?'':' ')+tw[j],incremental:true}); j++; _ambTimer=setTimeout(tstep,70+Math.random()*60); } else { onRoomTranslation({turn_id:turnId,speaker_id:speakerId,text:tgt,final:true}); onSpeakingState({id:speakerId,speaking:false}); if(whenDone)whenDone(); } })(); } })(); }
-function _demoAmbient(){ if(mode!=='room'){return;} var f=_friends[_ambIdx%_friends.length]; var line=f.lines[Math.floor(_ambIdx/_friends.length)%f.lines.length]; _ambIdx++; _streamRoomTurn(f.id,f.name,f.color,f.lang,line.src,line.tgt,function(){ _ambTimer=setTimeout(_demoAmbient,3200+Math.random()*2200); }); }
-function _demoMyRoomTurn(){ if(mode!=='room')return; var you=(roomState&&roomState.you)||'you'; _streamRoomTurn(you,'Tú',0,'ES','Hola a todos, ¿me escuchan bien?','Hello everyone, can you hear me well?',null); }
-function _handleDemoCmd(cmd){ if(!cmd||!cmd.command)return; switch(cmd.command){ case 'create_room': case 'join_room': _dt(function(){ var code=(cmd.code||'').toUpperCase()||('GR'+Math.floor(1000+Math.random()*8999)); handleMessage({type:'room_joined',code:code,room_name:cmd.room_name||'Café de idiomas',your_target:'es',you:'you',members:[{id:'you',name:cmd.name||'Tú',color:0},{id:'fy',name:'Yuki',color:1},{id:'fd',name:'Dmitri',color:2},{id:'fa',name:'Amara',color:3}]}); if(_ambTimer)clearTimeout(_ambTimer); _ambIdx=0; _ambTimer=setTimeout(_demoAmbient,1400); },650); break; case 'leave_room': if(_ambTimer)clearTimeout(_ambTimer); _ambTimer=null; break; default: break; } }
-init();
-</script>
-</body>
+  </body>
 </html>

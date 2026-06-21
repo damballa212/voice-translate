@@ -818,7 +818,7 @@ async def admin_api_stats(request: Request):
     }
 
 
-app.mount("/app", StaticFiles(directory="static/app", html=True), name="app-frontend")
+app.mount("/assets", StaticFiles(directory="static/assets"), name="static-assets")
 
 if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)

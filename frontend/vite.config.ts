@@ -17,7 +17,7 @@ export default defineConfig({
         },
       }
     : {},
-  base: "/app/",
+  base: "/",
   build: {
     outDir: "dist",
     target: "es2020",
