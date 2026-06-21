@@ -59,6 +59,9 @@ import {
   cancelChatVoice,
   playDmVoice,
   onChatLangChange,
+  onChatInputChange,
+  onActionBtnDown,
+  onActionBtnUp,
 } from "./dm";
 import { enablePushNotifications, registerServiceWorker } from "./push";
 import { doSaveNativeLang, openNativeLangPicker, selectOnboardingLang, renderOnboardingLangList } from "./onboarding";
@@ -110,6 +113,9 @@ Object.assign(window, {
   cancelChatVoice,
   playDmVoice,
   onChatLangChange,
+  onChatInputChange,
+  onActionBtnDown,
+  onActionBtnUp,
   enablePushNotifications,
   __startDemo: startDemo,
   doSaveNativeLang,

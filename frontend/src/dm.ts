@@ -527,6 +527,39 @@ function resetAudioUI(messageId: number): void {
   if (fill) fill.style.width = "0%";
 }
 
+function hasText(): boolean {
+  const input = $opt<HTMLInputElement>("chatInput");
+  return !!(input && input.value.trim());
+}
+
+function updateActionBtn(): void {
+  const btn = $opt("chatActionBtn");
+  if (!btn) return;
+  const text = hasText();
+  btn.textContent = text ? "➤" : "🎙";
+  btn.classList.toggle("send", text);
+}
+
+export function onChatInputChange(): void {
+  updateActionBtn();
+}
+
+export function onActionBtnDown(ev: Event): void {
+  ev.preventDefault();
+  if (hasText()) return;
+  startChatVoice();
+}
+
+export function onActionBtnUp(ev: Event): void {
+  ev.preventDefault();
+  if (hasText()) {
+    sendChatText();
+    updateActionBtn();
+    return;
+  }
+  stopChatVoice();
+}
+
 export function onChatLangChange(lang: string): void {
   if (!activeConversation) return;
   activeConversation.my_target_lang = lang;

@@ -159,8 +159,7 @@
         <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-composer">
           <div id="chatComposerInner" style="display:flex;align-items:flex-end;gap:6px;flex:1">
-            <input id="chatInput" class="chat-input" data-i18n-placeholder="dm-input-placeholder" placeholder="Mensaje" onkeydown="onChatInputKey(event)" />
-            <button class="chat-round send" onclick="sendChatText()">➤</button>
+            <input id="chatInput" class="chat-input" data-i18n-placeholder="dm-input-placeholder" placeholder="Mensaje" onkeydown="onChatInputKey(event)" oninput="onChatInputChange()" />
           </div>
           <div id="chatRecordBar" class="chat-record-bar" style="display:none">
             <button class="record-cancel" onclick="cancelChatVoice()">✕</button>
@@ -168,9 +167,9 @@
             <span class="record-duration" id="chatRecordDuration">0:00</span>
             <span class="record-slide-hint" data-i18n="dm-voice-recording-hint">Grabando...</span>
           </div>
-          <button class="chat-round" id="chatVoiceBtn"
-            ontouchstart="startChatVoice()" ontouchend="stopChatVoice()"
-            onmousedown="startChatVoice()" onmouseup="stopChatVoice()">🎙</button>
+          <button class="chat-round" id="chatActionBtn"
+            ontouchstart="onActionBtnDown(event)" ontouchend="onActionBtnUp(event)"
+            onmousedown="onActionBtnDown(event)" onmouseup="onActionBtnUp(event)">🎙</button>
         </div>
       </div>
 
