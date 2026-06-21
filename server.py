@@ -17,6 +17,7 @@ from openai_translator import OpenAITranslator, OPENAI_LANGS
 from logger import log, ok, err
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 import db
 
@@ -816,6 +817,8 @@ async def admin_api_stats(request: Request):
         "trial_limit": TRIAL_LIMIT,
     }
 
+
+app.mount("/app", StaticFiles(directory="static/app", html=True), name="app-frontend")
 
 if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)

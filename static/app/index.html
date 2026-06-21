@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Traductor en Vivo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <!-- VAD (detección de voz) — expone window.ort / window.vad -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js"></script>
+    <script type="module" crossorigin src="/app/assets/index-BP5GQMlO.js"></script>
+    <link rel="stylesheet" crossorigin href="/app/assets/index-H_pBVKar.css">
+  </head>
+  <body>
+    <!-- Splash de arranque (controlado por JS) -->
+    <div id="splash">
+      <div class="logo">🎙</div>
+      <div class="title">Traductor en Vivo</div>
+      <div class="subtitle">Realtime Voice Translator</div>
+      <div class="loader"></div>
+    </div>
+    <div class="app">
+      <!-- ============================================================
+       AUTH VIEW (login / registro)
+       ============================================================ -->
+      <div class="view active" id="viewAuth">
+        <div class="hero" style="padding: 64px 28px 16px">
+          <h1
+            style="
+              font-size: 36px;
+              font-weight: 700;
+              letter-spacing: -0.025em;
+              line-height: 1.05;
+            "
+          >
+            Traductor <span class="hand">en Vivo</span>
+          </h1>
+          <div
+            class="sub"
+            style="
+              margin-top: 8px;
+              font-size: 13px;
+              color: var(--ink-soft);
+              font-weight: 500;
+            "
+          >
+            Inicia sesión para guardar grabaciones
+          </div>
+        </div>
+        <div
+          style="
+            padding: 24px 22px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+          "
+        >
+          <!-- Tabs: iniciar sesión / registrarse -->
+          <div
+            id="authTabs"
+            style="
+              display: flex;
+              gap: 0;
+              border-bottom: 1px solid var(--line);
+              margin-bottom: 18px;
+              position: relative;
+            "
+          >
+            <button
+              type="button"
+              class="auth-tab active"
+              data-tab="login"
+              onclick="switchAuthTab('login')"
+            >
+              Iniciar sesión
+            </button>
+            <button
+              type="button"
+              class="auth-tab"
+              data-tab="register"
+              onclick="switchAuthTab('register')"
+            >
+              Registrarse
+            </button>
+            <div class="auth-tab-underline"></div>
+          </div>
+
+          <!-- Login form -->
+          <div id="authLoginPane">
+            <div class="form-group">
+              <label>Correo</label>
+              <input
+                type="email"
+                id="loginEmail"
+                placeholder="you@example.com"
+                autocomplete="username"
+                onkeydown="if (event.key === 'Enter') doLogin();"
+              />
+            </div>
+            <div class="form-group">
+              <label>Contraseña</label>
+              <input
+                type="password"
+                id="loginPwd"
+                placeholder="Introduce tu contraseña"
+                autocomplete="current-password"
+                onkeydown="if (event.key === 'Enter') doLogin();"
+              />
+            </div>
+            <button class="primary auth-submit" onclick="doLogin()">
+              Iniciar sesión
+            </button>
+          </div>
+
+          <!-- Register form -->
+          <div id="authRegisterPane" style="display: none">
+            <div class="form-group">
+              <label>Correo</label>
+              <input
+                type="email"
+                id="regEmail"
+                placeholder="you@example.com"
+                autocomplete="username"
+                onkeydown="if (event.key === 'Enter') doRegister();"
+              />
+            </div>
+            <div class="form-group">
+              <label>Apodo</label>
+              <input
+                type="text"
+                id="regNick"
+                placeholder="Dejar vacío usará el prefijo del correo"
+                maxlength="20"
+                onkeydown="if (event.key === 'Enter') doRegister();"
+              />
+            </div>
+            <div class="form-group">
+              <label>Contraseña (≥ 6 caracteres)</label>
+              <input
+                type="password"
+                id="regPwd"
+                placeholder="Establece una contraseña"
+                autocomplete="new-password"
+                onkeydown="if (event.key === 'Enter') doRegister();"
+              />
+            </div>
+            <button class="primary auth-submit" onclick="doRegister()">
+              Registrarse e iniciar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+       LANDING VIEW
+       ============================================================ -->
+      <div class="view landing" id="viewLanding">
+        <div class="hero">
+          <h1>Traductor <span class="hand">en Vivo</span></h1>
+          <div class="sub">Que <b>cada voz</b> sea comprendida · Traducción individual / grupal en tiempo real</div>
+        </div>
+        <div class="cards">
+          <button class="card solo" onclick="enterSolo()">
+            <div class="ic">🎙</div>
+            <div class="body">
+              <div class="ttl">Traducción individual</div>
+              <div class="desc">Conversación en otro idioma</div>
+            </div>
+            <div class="arr">→</div>
+          </button>
+          <button class="card create" onclick="openCreateRoom()">
+            <div class="ic">＋</div>
+            <div class="body">
+              <div class="ttl">Crear sala</div>
+              <div class="desc">Crea una sala e invita a otros</div>
+            </div>
+            <div class="arr">→</div>
+          </button>
+          <button class="card join" onclick="openJoinRoom()">
+            <div class="ic">⌬</div>
+            <div class="body">
+              <div class="ttl">Unirse a sala</div>
+              <div class="desc">Ingresa el código de invitación</div>
+            </div>
+            <div class="arr">→</div>
+          </button>
+        </div>
+        <div class="footer">
+          VOICE TRANSLATE · v1.0 · OPENAI
+        </div>
+      </div>
+
+      <!-- ============================================================
+       SOLO VIEW
+       ============================================================ -->
+      <div class="view" id="viewSolo">
+        <div class="head">
+          <button class="head-back" onclick="backToLanding()">‹</button>
+          <div class="head-info">
+            <div class="head-title"><span class="emoji">🎙</span>Traducción individual</div>
+            <div class="head-meta" id="soloMeta">
+              <span class="live-dot"></span>Listo
+            </div>
+          </div>
+          <button class="head-act" onclick="openSettings()">⚙</button>
+        </div>
+
+        <div class="lang-bar">
+          <div
+            class="lang-tag active"
+            id="srcLang"
+            onclick="openLangPicker('src')"
+          >
+            <span class="flag" id="srcFlag">🌐</span>
+            <span id="srcLabel">Detectar idioma</span>
+            <span style="color: var(--dim); font-size: 11px">▾</span>
+          </div>
+          <button class="lang-swap" onclick="swapLangs()">⇄</button>
+          <div class="lang-tag" id="tgtLang" onclick="openLangPicker('tgt')">
+            <span class="flag" id="tgtFlag">🇨🇳</span>
+            <span id="tgtLabel">Ruso</span>
+            <span style="color: var(--dim); font-size: 11px">▾</span>
+          </div>
+        </div>
+
+        <div class="transcript" id="soloTranscript">
+          <div class="empty-state" id="soloEmpty">
+            <div class="big">🎙</div>
+            Pulsa el micrófono abajo<br />Habla en cualquier idioma, traducción en vivo
+          </div>
+          <div
+            class="subtitle-text"
+            id="subtitleText"
+            style="display: none"
+          ></div>
+        </div>
+
+        <div class="wave-viz" id="waveSolo"></div>
+        <div class="dock">
+          <button class="mic" id="micSolo" onclick="toggleMic()">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"
+              />
+            </svg>
+          </button>
+          <div class="mic-info">
+            <div class="ttl" id="micSoloTitle">Pulsa para empezar</div>
+            <div class="meta" id="micSoloMeta">Listo</div>
+          </div>
+          <button
+            class="dock-act"
+            onclick="downloadCurrent()"
+            title="Descargar grabación"
+          >
+            ↓
+          </button>
+          <button class="dock-act" onclick="openHistory()" title="Grabaciones">
+            📜
+          </button>
+        </div>
+      </div>
+
+      <!-- ============================================================
+       ROOM VIEW
+       ============================================================ -->
+      <div class="view" id="viewRoom">
+        <div class="head">
+          <button class="head-back" onclick="leaveRoom()">‹</button>
+          <div class="head-info">
+            <div class="head-title">
+              <span class="emoji">📓</span><span id="roomName">Sala</span>
+            </div>
+            <div class="head-meta" id="roomMeta">
+              <span class="live-dot"></span>
+              <span id="roomMembersCount">0</span> ·
+              <span class="code" id="roomCode" onclick="copyRoomCode()"
+                >XXXXXX</span
+              >
+              · Escucho <b id="roomMyTarget">Ruso</b>
+            </div>
+          </div>
+          <button class="head-act" onclick="openSettings()">⚙</button>
+        </div>
+
+        <div class="members" id="roomMembers"></div>
+
+        <div class="stream" id="roomStream">
+          <div class="empty-state">
+            <div class="big">💬</div>
+            Sala lista<br />Pulsa el micrófono para hablar
+          </div>
+        </div>
+
+        <div class="wave-viz" id="waveRoom"></div>
+        <div class="dock">
+          <button class="mic" id="micRoom" onclick="toggleMic()">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"
+              />
+            </svg>
+          </button>
+          <div class="mic-info">
+            <div class="ttl" id="micRoomTitle">Pulsa para hablar</div>
+            <div class="meta" id="micRoomMeta">Listo</div>
+          </div>
+          <button class="dock-act" onclick="copyTranscript()" title="Copiar todo">
+            📋
+          </button>
+          <button class="dock-act" onclick="exportRoom()" title="Exportar Markdown">
+            ↓
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+     SETTINGS overlay
+     ============================================================ -->
+    <div
+      class="overlay"
+      id="overlay"
+      onclick="if (event.target === this) closeOverlay();"
+    >
+      <div class="panel" id="panelSettings" style="display: none">
+        <div class="grip"></div>
+        <h3>Ajustes</h3>
+        <div class="form-group">
+          <label>Idioma de entrada</label>
+          <select id="setAsrLang"></select>
+        </div>
+        <div class="form-group">
+          <label>Traducir a</label>
+          <select id="setTargetLang"></select>
+        </div>
+        <div class="toggle-row">
+          <span>Activar traducción</span>
+          <div
+            class="toggle on"
+            id="toggleTranslate"
+            onclick="
+              this.classList.toggle('on');
+              pushConfig();
+            "
+          ></div>
+        </div>
+        <div class="toggle-row">
+          <span>Voz (TTS)</span>
+          <div
+            class="toggle"
+            id="toggleTts"
+            onclick="
+              this.classList.toggle('on');
+              pushConfig();
+            "
+          ></div>
+        </div>
+      </div>
+
+      <!-- Create Room panel -->
+      <div class="panel" id="panelCreate" style="display: none">
+        <div class="grip"></div>
+        <h3>Crear sala</h3>
+        <div class="form-group">
+          <label>Nombre de la sala</label>
+          <input type="text" id="createName" placeholder="Ej: Reunión semanal" />
+        </div>
+        <div class="form-group">
+          <label>Tu apodo</label>
+          <input
+            type="text"
+            id="createNick"
+            placeholder="Tu nombre"
+            maxlength="20"
+          />
+        </div>
+        <div class="form-group">
+          <label>Idioma que escuchas</label>
+          <select id="createTarget"></select>
+        </div>
+        <button class="primary" onclick="doCreateRoom()">Crear</button>
+      </div>
+
+      <!-- Lang picker panel -->
+      <div class="panel" id="panelLang" style="display: none">
+        <div class="grip"></div>
+        <h3 id="langPickerTitle">Seleccionar idioma</h3>
+        <input
+          type="text"
+          id="langSearchInput"
+          placeholder="Buscar idioma..."
+          style="
+            width: 100%;
+            padding: 11px 14px;
+            background: white;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            color: var(--ink);
+            font-size: 14px;
+            outline: none;
+            font-family: inherit;
+            margin-bottom: 14px;
+          "
+          oninput="renderLangList()"
+        />
+        <div id="langList" style="max-height: 55dvh; overflow-y: auto"></div>
+      </div>
+
+      <!-- History panel -->
+      <div class="panel" id="panelHistory" style="display: none">
+        <div class="grip"></div>
+        <h3>📜 Grabaciones</h3>
+        <div id="historyList"><div class="record-empty">Cargando…</div></div>
+      </div>
+
+      <!-- Join Room panel -->
+      <div class="panel" id="panelJoin" style="display: none">
+        <div class="grip"></div>
+        <h3>Unirse a sala</h3>
+        <div class="form-group">
+          <label>Código</label>
+          <input
+            type="text"
+            id="joinCode"
+            placeholder="Código de 6 caracteres"
+            maxlength="8"
+            style="
+              text-transform: uppercase;
+              letter-spacing: 0.2em;
+              text-align: center;
+              font-family: var(--mono);
+            "
+          />
+        </div>
+        <div class="form-group">
+          <label>Tu apodo</label>
+          <input
+            type="text"
+            id="joinNick"
+            placeholder="Tu nombre"
+            maxlength="20"
+          />
+        </div>
+        <div class="form-group">
+          <label>Idioma que escuchas</label>
+          <select id="joinTarget"></select>
+        </div>
+        <button class="primary" onclick="doJoinRoom()">Unirse</button>
+      </div>
+    </div>
+
+    <!-- Modal de límite de prueba -->
+    <div id="trialModal" role="dialog" aria-labelledby="trialTitle">
+      <div class="card">
+        <div class="icon">⏰</div>
+        <h2 id="trialTitle">Prueba gratuita agotada</h2>
+        <div class="desc">
+          Gracias por probar el Traductor en Vivo<br />
+          Este es un <strong style="color: var(--ink)">proyecto open source</strong>, puedes desplegarlo por tu cuenta, completamente gratis
+        </div>
+        <div class="count" id="trialCount">3 / 3 usados</div>
+        <a
+          class="github-cta"
+          href="https://github.com/Timelk/realtime-translate"
+          target="_blank"
+          rel="noopener"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2c-3.21.7-3.89-1.55-3.89-1.55-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.7 1.25 3.36.95.1-.74.4-1.25.73-1.54-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.45.11-3.03 0 0 .96-.31 3.15 1.18a10.94 10.94 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.63 1.58.23 2.74.11 3.03.74.81 1.18 1.84 1.18 3.1 0 4.43-2.7 5.41-5.28 5.7.41.36.78 1.06.78 2.13v3.16c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .5z"
+            />
+          </svg>
+          <div class="github-cta-text">
+            <div class="t">Desplegar en GitHub</div>
+            <div class="s">Timelk/realtime-translate · MIT · Docker</div>
+          </div>
+          <div class="github-cta-arrow">→</div>
+        </a>
+        <div class="actions">
+          <button class="ghost" onclick="closeTrialModal()">Entendido</button>
+          <button class="primary" onclick="closeTrialModal(); openHistory();">
+            Ver grabaciones
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div id="busyBanner">
+      <span class="spin"></span
+      ><span id="busyBannerText">Conectando, espera...</span>
+    </div>
+
+  </body>
+</html>

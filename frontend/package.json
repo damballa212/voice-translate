@@ -1,0 +1,17 @@
+{
+  "name": "traductor-en-vivo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Traductor de voz en tiempo real (individual y salas grupales) — frontend en TypeScript.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  }
+}
