@@ -13,18 +13,18 @@ let activeConversationId = 0;
 let onSentCb: ((message: DmMessage) => void) | null = null;
 let durationInterval: ReturnType<typeof setInterval> | null = null;
 let cancelled = false;
+let startX = 0;
 
 function setButtonRecording(on: boolean): void {
-  const btn = $opt("chatVoiceBtn");
+  const btn = $opt("chatActionBtn");
   btn?.classList.toggle("recording", on);
-  if (btn) btn.textContent = on ? "■" : "🎙";
 }
 
 function showRecordingUI(on: boolean): void {
   const bar = $opt("chatRecordBar");
-  if (bar) bar.style.display = on ? "flex" : "none";
+  bar?.classList.toggle("active", on);
   const composer = $opt("chatComposerInner");
-  if (composer) composer.style.display = on ? "none" : "flex";
+  composer?.classList.toggle("hidden", on);
 }
 
 function updateDuration(): void {
@@ -76,6 +76,23 @@ export async function startRecording(
     showRecordingUI(true);
     updateDuration();
     durationInterval = setInterval(updateDuration, 500);
+    startX = 0;
+    const btn = $opt("chatActionBtn");
+    if (btn) {
+      const onMove = (e: TouchEvent) => {
+        const x = e.touches[0].clientX;
+        if (!startX) startX = x;
+        const dx = x - startX;
+        if (dx < -80) {
+          btn.removeEventListener("touchmove", onMove);
+          cancelRecording();
+        }
+      };
+      btn.addEventListener("touchmove", onMove, { passive: true });
+      const cleanup = () => btn.removeEventListener("touchmove", onMove);
+      btn.addEventListener("touchend", cleanup, { once: true });
+      btn.addEventListener("touchcancel", cleanup, { once: true });
+    }
   } catch {
     setButtonRecording(false);
     showRecordingUI(false);

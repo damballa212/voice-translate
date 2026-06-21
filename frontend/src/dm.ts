@@ -533,11 +533,12 @@ function hasText(): boolean {
 }
 
 function updateActionBtn(): void {
-  const btn = $opt("chatActionBtn");
-  if (!btn) return;
+  const mic = $opt("actionBtnMic");
+  const snd = $opt("actionBtnSend");
+  if (!mic || !snd) return;
   const text = hasText();
-  btn.textContent = text ? "➤" : "🎙";
-  btn.classList.toggle("send", text);
+  mic.style.display = text ? "none" : "";
+  snd.style.display = text ? "" : "none";
 }
 
 export function onChatInputChange(): void {

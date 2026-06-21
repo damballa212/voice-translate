@@ -158,18 +158,23 @@
         </div>
         <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-composer">
-          <div id="chatComposerInner" style="display:flex;align-items:flex-end;gap:6px;flex:1">
+          <div id="chatComposerInner" class="composer-inner">
             <input id="chatInput" class="chat-input" data-i18n-placeholder="dm-input-placeholder" placeholder="Mensaje" onkeydown="onChatInputKey(event)" oninput="onChatInputChange()" />
           </div>
-          <div id="chatRecordBar" class="chat-record-bar" style="display:none">
-            <button class="record-cancel" onclick="cancelChatVoice()">✕</button>
-            <span class="record-indicator"><span class="record-dot"></span></span>
+          <div id="chatRecordBar" class="record-bar">
+            <span class="record-dot-wrap"><span class="record-dot"></span></span>
             <span class="record-duration" id="chatRecordDuration">0:00</span>
-            <span class="record-slide-hint" data-i18n="dm-voice-recording-hint">Grabando...</span>
+            <span class="record-slide">
+              <span class="record-slide-arrow">‹‹</span>
+              <span data-i18n="dm-voice-slide-cancel">Desliza para cancelar</span>
+            </span>
           </div>
-          <button class="chat-round" id="chatActionBtn"
+          <button class="action-btn" id="chatActionBtn"
             ontouchstart="onActionBtnDown(event)" ontouchend="onActionBtnUp(event)"
-            onmousedown="onActionBtnDown(event)" onmouseup="onActionBtnUp(event)">🎙</button>
+            onmousedown="onActionBtnDown(event)" onmouseup="onActionBtnUp(event)">
+            <svg id="actionBtnMic" class="action-icon" viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+            <svg id="actionBtnSend" class="action-icon" viewBox="0 0 24 24" width="22" height="22" style="display:none"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
         </div>
       </div>
 
