@@ -14,6 +14,7 @@ COPY openai_translator.py ./openai_translator.py
 COPY logger.py ./logger.py
 COPY admin_cli.py ./admin_cli.py
 COPY verify_openai.py ./verify_openai.py
+COPY text_translator.py ./text_translator.py
 COPY static ./static
 
 EXPOSE 8800
