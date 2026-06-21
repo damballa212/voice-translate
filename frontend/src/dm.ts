@@ -13,19 +13,42 @@ import { t } from "./i18n";
 
 let conversations: DmConversation[] = [];
 let activeConversation: DmConversation | null = null;
-const renderedMessages = new Set<number>();
+const renderedMessages = new Map<number, DmMessage>();
+let lastRenderedSenderId = 0;
+let lastRenderedDateStr = "";
+let pendingIdCounter = -1;
 
 function currentUserId(): number {
   return Number(app.currentUser?.id || 0);
 }
 
-function formatTime(ts: number): string {
+function formatHour(ts: number): string {
+  const d = new Date(ts * 1000);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function formatDateLabel(ts: number): string {
+  const d = new Date(ts * 1000);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return t("dm-date-today") || "Hoy";
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return t("dm-date-yesterday") || "Ayer";
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+}
+
+function dateKey(ts: number): string {
+  const d = new Date(ts * 1000);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function formatListTime(ts: number): string {
   const d = new Date(ts * 1000);
   const now = new Date();
   if (d.toDateString() === now.toDateString()) {
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return formatHour(ts);
   }
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
 function messagePreview(message?: DmMessage | null): string {
@@ -82,7 +105,7 @@ export function renderConversations(): void {
       <span class="dm-thread-body">
         <span class="dm-thread-top">
           <b>${escapeHtml(p.nickname || p.email)}</b>
-          <span>${escapeHtml(formatTime(c.updated_at))}</span>
+          <span>${escapeHtml(formatListTime(c.updated_at))}</span>
         </span>
         <span class="dm-thread-bottom">
           <span>${escapeHtml(messagePreview(c.last_message))}</span>
@@ -141,6 +164,8 @@ export async function openChat(id: number): Promise<void> {
   }
   activeConversation = conv;
   renderedMessages.clear();
+  lastRenderedSenderId = 0;
+  lastRenderedDateStr = "";
   $("chatName").textContent = conv.participant.nickname || conv.participant.email;
   $("chatMeta").textContent = conv.participant.email;
   $("chatAvatar").textContent = (conv.participant.nickname || conv.participant.email).charAt(0).toUpperCase();
@@ -161,7 +186,9 @@ async function loadMessages(id: number): Promise<void> {
     const el = $("chatMessages");
     el.innerHTML = "";
     renderedMessages.clear();
-    messages.forEach(renderMessage);
+    lastRenderedSenderId = 0;
+    lastRenderedDateStr = "";
+    messages.forEach((m) => renderMessage(m, false));
     if (!messages.length) {
       el.innerHTML = `<div class="dm-empty"><div class="big">💬</div><b>${escapeHtml(t("dm-chat-empty-title"))}</b><span>${escapeHtml(t("dm-chat-empty-desc"))}</span></div>`;
     }
@@ -173,35 +200,53 @@ async function loadMessages(id: number): Promise<void> {
   }
 }
 
-function renderMessage(message: DmMessage): void {
+function renderMessage(message: DmMessage, animate: boolean): void {
   if (renderedMessages.has(message.id)) return;
-  renderedMessages.add(message.id);
+  renderedMessages.set(message.id, message);
   const el = $("chatMessages");
   const empty = el.querySelector(".dm-empty, .record-empty");
   if (empty) empty.remove();
   const mine = message.sender_user_id === currentUserId();
+  const ts = message.created_at;
+  const dk = dateKey(ts);
+
+  if (dk !== lastRenderedDateStr) {
+    lastRenderedDateStr = dk;
+    const sep = document.createElement("div");
+    sep.className = "chat-date-sep";
+    sep.textContent = formatDateLabel(ts);
+    el.appendChild(sep);
+    lastRenderedSenderId = 0;
+  }
+
+  const isTail = message.sender_user_id !== lastRenderedSenderId;
+  lastRenderedSenderId = message.sender_user_id;
+
   const div = document.createElement("div");
-  div.className = `chat-bubble ${mine ? "out" : "in"}`;
+  div.className = `chat-bubble ${mine ? "out" : "in"}${isTail ? " tail" : ""}`;
   div.id = `dm-msg-${message.id}`;
   div.dataset.messageId = String(message.id);
+  if (animate) div.style.animation = "trans-in .2s ease-out";
+
   const translationKey = mine
     ? (activeConversation?.participant?.native_lang || "")
     : (app.currentUser?.native_lang || "");
+
   if (message.kind === "voice") {
     const secs = Math.max(0, Math.round((message.voice_duration_ms || 0) / 1000));
     const hasTranscript = message.transcript && message.transcript.trim();
     const translatedText = translationKey ? (message.translations_json?.[translationKey] || "") : "";
     div.innerHTML = `<button class="voice-bubble" onclick="playDmVoice(${message.id})">
       <span class="voice-play">▶</span>
-      <span class="voice-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="voice-slider-wrap"><span class="voice-slider-fill"></span></span>
       <span class="voice-duration">${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}</span>
     </button>${hasTranscript ? `<span class="chat-transcript">${escapeHtml(message.transcript!)}</span>` : ""}${translatedText ? `<span class="chat-translation">${escapeHtml(translatedText)}</span>` : ""}`;
   } else {
-    const translatedText = translationKey ? (message.translations_json?.[translationKey] || "") : "";
     const bodyEl = document.createElement("span");
     bodyEl.className = "chat-body";
     bodyEl.textContent = message.body || "";
     div.appendChild(bodyEl);
+    const translatedText = translationKey ? (message.translations_json?.[translationKey] || "") : "";
     if (translatedText) {
       const transEl = document.createElement("span");
       transEl.className = "chat-translation";
@@ -209,10 +254,12 @@ function renderMessage(message: DmMessage): void {
       div.appendChild(transEl);
     }
   }
-  const time = document.createElement("span");
-  time.className = "chat-time";
-  time.textContent = formatTime(message.created_at);
-  div.appendChild(time);
+
+  const timeMeta = document.createElement("span");
+  timeMeta.className = "chat-time";
+  timeMeta.innerHTML = `${formatHour(ts)}${mine ? '<span class="chat-tick read">✓✓</span>' : ""}`;
+  div.appendChild(timeMeta);
+
   div.addEventListener("contextmenu", (ev) => { ev.preventDefault(); showBubbleMenu(message, div); });
   div.addEventListener("pointerdown", makeLongPressHandler(message, div));
   el.appendChild(div);
@@ -319,6 +366,29 @@ export function sendChatText(): void {
   const body = input.value.trim();
   if (!body) return;
   input.value = "";
+
+  const tempId = pendingIdCounter--;
+  const now = Date.now() / 1000;
+  const optimistic: DmMessage = {
+    id: tempId,
+    conversation_id: activeConversation.id,
+    sender_user_id: currentUserId(),
+    kind: "text",
+    body,
+    voice_path: null,
+    voice_mime: null,
+    voice_duration_ms: null,
+    voice_size_bytes: null,
+    translations_json: {},
+    transcript: null,
+    created_at: now,
+    deleted_at: null,
+    is_voice: false,
+  };
+  renderMessage(optimistic, true);
+  const pending = document.getElementById(`dm-msg-${tempId}`);
+  if (pending) pending.classList.add("sending");
+
   send({ command: "dm_send_text", conversation_id: activeConversation.id, body });
 }
 
@@ -331,7 +401,25 @@ export function onChatInputKey(ev: KeyboardEvent): void {
 
 export function onDmMessage(m: DmMessageMsg): void {
   if (activeConversation?.id === m.message.conversation_id) {
-    renderMessage(m.message);
+    const isMine = m.message.sender_user_id === currentUserId();
+    if (isMine) {
+      const pendingEls = document.querySelectorAll<HTMLElement>(".chat-bubble.sending");
+      if (pendingEls.length > 0) {
+        const lastPending = pendingEls[pendingEls.length - 1];
+        const oldId = Number(lastPending.dataset.messageId);
+        renderedMessages.delete(oldId);
+        lastPending.remove();
+        lastRenderedSenderId = 0;
+        const allBubbles = document.querySelectorAll<HTMLElement>(".chat-bubble");
+        if (allBubbles.length > 0) {
+          const last = allBubbles[allBubbles.length - 1];
+          const lastMsgId = Number(last.dataset.messageId);
+          const lastMsg = renderedMessages.get(lastMsgId);
+          if (lastMsg) lastRenderedSenderId = lastMsg.sender_user_id;
+        }
+      }
+    }
+    renderMessage(m.message, true);
     send({
       command: "dm_mark_read",
       conversation_id: m.message.conversation_id,
@@ -349,7 +437,7 @@ export function backToMessages(): void {
 export function toggleChatVoiceNote(): void {
   if (!activeConversation) return;
   toggleVoiceNote(activeConversation.id, (message) => {
-    renderMessage(message);
+    renderMessage(message, true);
     loadConversations();
   });
 }

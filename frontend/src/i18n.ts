@@ -178,6 +178,8 @@ const es: Dict = {
   "dm-empty-desc": "Crea un chat con el email de otro usuario registrado.",
   "dm-preview-empty": "Sin mensajes todavia",
   "dm-preview-voice": "Nota de voz",
+  "dm-date-today": "Hoy",
+  "dm-date-yesterday": "Ayer",
   "dm-new-title": "Nuevo chat",
   "dm-new-label": "Email del usuario",
   "dm-new-placeholder": "amigo@example.com",
