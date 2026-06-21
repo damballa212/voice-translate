@@ -484,6 +484,8 @@ const dictionaries: Record<Locale, Dict> = { es, ja, ru };
 let currentLocale: Locale = "es";
 
 function detectLocale(): Locale {
+  const saved = typeof localStorage !== "undefined" ? localStorage.getItem("locale") : null;
+  if (saved && saved in dictionaries) return saved as Locale;
   const nav = typeof navigator !== "undefined" ? navigator.language : "";
   const primary = nav.split("-")[0].toLowerCase();
   if (primary === "ja") return "ja";
@@ -500,6 +502,7 @@ export function getLocale(): Locale {
 export function setLocale(lang: string): void {
   if (lang in dictionaries) {
     currentLocale = lang as Locale;
+    localStorage.setItem("locale", lang);
     document.documentElement.lang = lang;
   }
 }
