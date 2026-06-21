@@ -251,6 +251,7 @@ function renderMessage(message: DmMessage, animate: boolean): void {
   }
 
   if (message.kind === "image" && message.image_url) {
+    div.classList.add("img-bubble");
     const img = document.createElement("img");
     img.className = "chat-img";
     img.src = `/dm/image/${message.id}`;
