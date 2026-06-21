@@ -62,11 +62,20 @@ export interface DmParticipant {
   native_lang?: string;
 }
 
+export interface DmReplyPreview {
+  id: number;
+  sender_user_id: number;
+  sender_name: string;
+  kind: string;
+  body: string;
+  image_url?: string | null;
+}
+
 export interface DmMessage {
   id: number;
   conversation_id: number;
   sender_user_id: number;
-  kind: "text" | "voice";
+  kind: "text" | "voice" | "image";
   body?: string | null;
   voice_path?: string | null;
   voice_mime?: string | null;
@@ -74,6 +83,9 @@ export interface DmMessage {
   voice_size_bytes?: number | null;
   translations_json?: Record<string, string>;
   transcript?: string | null;
+  image_url?: string | null;
+  reply_to_id?: number | null;
+  reply_preview?: DmReplyPreview | null;
   created_at: number;
   deleted_at?: number | null;
   is_voice?: boolean;

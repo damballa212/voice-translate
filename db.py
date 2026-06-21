@@ -142,6 +142,8 @@ def init():
             "ALTER TABLE dm_messages ADD COLUMN transcript TEXT",
             "ALTER TABLE dm_members ADD COLUMN target_lang TEXT NOT NULL DEFAULT 'en'",
             "ALTER TABLE users ADD COLUMN native_lang TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE dm_messages ADD COLUMN image_url TEXT",
+            "ALTER TABLE dm_messages ADD COLUMN reply_to_id INTEGER",
         ]:
             try:
                 c.execute(sql)
@@ -453,6 +455,10 @@ def _dm_message_dict(row) -> dict:
         d["translations_json"] = json.loads(raw_tj) if isinstance(raw_tj, str) else raw_tj
     except Exception:
         d["translations_json"] = {}
+    if "image_url" not in d:
+        d["image_url"] = None
+    if "reply_to_id" not in d:
+        d["reply_to_id"] = None
     return d
 
 
@@ -562,17 +568,24 @@ def dm_list_messages(conversation_id: int, user_id: int, limit: int = 100) -> li
         rows = c.execute("""
             SELECT id, conversation_id, sender_user_id, kind, body,
                    voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
-                   translations_json, transcript, created_at, deleted_at
+                   translations_json, transcript, image_url, reply_to_id, created_at, deleted_at
             FROM dm_messages
             WHERE conversation_id = ? AND deleted_at IS NULL
             ORDER BY created_at DESC, id DESC
             LIMIT ?
         """, (conversation_id, max(1, min(int(limit or 100), 200)))).fetchall()
-        return [_dm_message_dict(r) for r in reversed(rows)]
+        messages = [_dm_message_dict(r) for r in reversed(rows)]
+        for m in messages:
+            if m.get("reply_to_id"):
+                m["reply_preview"] = dm_get_reply_preview(m["reply_to_id"])
+            else:
+                m["reply_preview"] = None
+        return messages
 
 
 def dm_add_text_message(conversation_id: int, sender_user_id: int, body: str,
-                        translations_json: dict | None = None) -> dict:
+                        translations_json: dict | None = None,
+                        reply_to_id: int | None = None) -> dict:
     text = (body or "").strip()
     if not text:
         raise ValueError("El mensaje está vacío")
@@ -583,9 +596,9 @@ def dm_add_text_message(conversation_id: int, sender_user_id: int, body: str,
         _dm_require_member(c, conversation_id, sender_user_id)
         now = time.time()
         cur = c.execute("""
-            INSERT INTO dm_messages (conversation_id, sender_user_id, kind, body, translations_json, created_at)
-            VALUES (?, ?, 'text', ?, ?, ?)
-        """, (conversation_id, sender_user_id, text, tj, now))
+            INSERT INTO dm_messages (conversation_id, sender_user_id, kind, body, translations_json, reply_to_id, created_at)
+            VALUES (?, ?, 'text', ?, ?, ?, ?)
+        """, (conversation_id, sender_user_id, text, tj, reply_to_id, now))
         c.execute(
             "UPDATE dm_conversations SET updated_at = ? WHERE id = ?",
             (now, conversation_id),
@@ -593,7 +606,7 @@ def dm_add_text_message(conversation_id: int, sender_user_id: int, body: str,
         row = c.execute("""
             SELECT id, conversation_id, sender_user_id, kind, body,
                    voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
-                   translations_json, transcript, created_at, deleted_at
+                   translations_json, transcript, image_url, reply_to_id, created_at, deleted_at
             FROM dm_messages WHERE id = ?
         """, (cur.lastrowid,)).fetchone()
         return _dm_message_dict(row)
@@ -624,10 +637,65 @@ def dm_add_voice_message(conversation_id: int, sender_user_id: int, path: str,
         row = c.execute("""
             SELECT id, conversation_id, sender_user_id, kind, body,
                    voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
-                   translations_json, transcript, created_at, deleted_at
+                   translations_json, transcript, image_url, reply_to_id, created_at, deleted_at
             FROM dm_messages WHERE id = ?
         """, (cur.lastrowid,)).fetchone()
         return _dm_message_dict(row)
+
+
+def dm_add_image_message(conversation_id: int, sender_user_id: int, image_url: str,
+                         reply_to_id: int | None = None,
+                         translations_json: dict | None = None) -> dict:
+    if not image_url:
+        raise ValueError("URL de imagen inválida")
+    tj = json.dumps(translations_json or {}, ensure_ascii=False)
+    with conn() as c:
+        _dm_require_member(c, conversation_id, sender_user_id)
+        now = time.time()
+        cur = c.execute("""
+            INSERT INTO dm_messages (conversation_id, sender_user_id, kind, image_url, reply_to_id, translations_json, created_at)
+            VALUES (?, ?, 'image', ?, ?, ?, ?)
+        """, (conversation_id, sender_user_id, image_url, reply_to_id, tj, now))
+        c.execute(
+            "UPDATE dm_conversations SET updated_at = ? WHERE id = ?",
+            (now, conversation_id),
+        )
+        row = c.execute("""
+            SELECT id, conversation_id, sender_user_id, kind, body,
+                   voice_path, voice_mime, voice_duration_ms, voice_size_bytes,
+                   translations_json, transcript, image_url, reply_to_id, created_at, deleted_at
+            FROM dm_messages WHERE id = ?
+        """, (cur.lastrowid,)).fetchone()
+        return _dm_message_dict(row)
+
+
+def dm_get_reply_preview(message_id: int) -> Optional[dict]:
+    if not message_id:
+        return None
+    with conn() as c:
+        row = c.execute("""
+            SELECT m.id, m.sender_user_id, m.kind, m.body, m.image_url, m.transcript,
+                   u.nickname AS sender_name
+            FROM dm_messages m
+            JOIN users u ON u.id = m.sender_user_id
+            WHERE m.id = ? AND m.deleted_at IS NULL
+        """, (message_id,)).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        preview = d.get("body") or d.get("transcript") or ""
+        if d.get("kind") == "image":
+            preview = "📷 Imagen"
+        elif d.get("kind") == "voice":
+            preview = "🎙 Nota de voz"
+        return {
+            "id": d["id"],
+            "sender_user_id": d["sender_user_id"],
+            "sender_name": d.get("sender_name") or "",
+            "kind": d["kind"],
+            "body": preview[:100],
+            "image_url": d.get("image_url"),
+        }
 
 
 def dm_mark_read(conversation_id: int, user_id: int, message_id: int):

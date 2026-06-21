@@ -157,7 +157,12 @@
           <button class="head-act" onclick="openSettings()">⚙</button>
         </div>
         <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-reply-bar" id="chatReplyBar" style="display:none"></div>
         <div class="chat-composer">
+          <input type="file" id="chatImageInput" accept="image/*" style="display:none" onchange="onImageFileSelected()" />
+          <button class="attach-btn" onclick="triggerImageUpload()">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6h-1.5z"/></svg>
+          </button>
           <div id="chatComposerInner" class="composer-inner">
             <input id="chatInput" class="chat-input" data-i18n-placeholder="dm-input-placeholder" placeholder="Mensaje" onkeydown="onChatInputKey(event)" oninput="onChatInputChange()" />
           </div>
@@ -433,6 +438,23 @@
           <button class="primary" onclick="closeTrialModal(); openHistory();" data-i18n="trial-btn-history">Ver grabaciones</button>
         </div>
       </div>
+    </div>
+
+    <!-- Image preview modal (before sending) -->
+    <div class="img-preview-modal" id="imagePreviewModal" style="display:none" onclick="if(event.target===this)cancelImagePreview()">
+      <div class="img-preview-card">
+        <img id="imagePreviewImg" alt="Preview" />
+        <div class="img-preview-actions">
+          <button class="img-preview-cancel" onclick="cancelImagePreview()">Cancelar</button>
+          <button class="img-preview-send" onclick="sendImagePreview()">Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lightbox (full screen image viewer) -->
+    <div class="lightbox" id="lightbox" style="display:none" onclick="if(event.target===this)closeLightbox()">
+      <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+      <img id="lightboxImg" alt="" />
     </div>
 
     <div class="toast" id="toast"></div>

@@ -193,6 +193,7 @@ const es: Dict = {
   "dm-voice-unsupported": "Notas de voz no soportadas en este navegador",
   "dm-voice-recording": "Grabando nota de voz",
   "dm-voice-slide-cancel": "Desliza para cancelar",
+  "bubble-menu-reply": "Responder",
   "dm-voice-upload-error": "No se pudo enviar la nota de voz",
   "dm-voice-play-error": "No se pudo reproducir la nota de voz",
   "bubble-menu-translate": "Traducir",

@@ -60,6 +60,35 @@ except Exception:
     WebPushException = Exception
     webpush = None
 
+IMAGE_MIME_EXT = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/avif": ".avif",
+}
+IMAGE_MAX_BYTES = 10 * 1024 * 1024
+
+R2_ENDPOINT = os.getenv("R2_ENDPOINT", "")
+R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET = os.getenv("R2_BUCKET", "atlas-social")
+
+_s3_client = None
+
+def _get_s3():
+    global _s3_client
+    if _s3_client is None and R2_ENDPOINT and R2_ACCESS_KEY_ID:
+        import boto3
+        _s3_client = boto3.client(
+            "s3",
+            endpoint_url=R2_ENDPOINT,
+            aws_access_key_id=R2_ACCESS_KEY_ID,
+            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+            region_name="auto",
+        )
+    return _s3_client
+
 
 # ============================================================
 # Room / RoomManager
@@ -707,6 +736,11 @@ async def ws_endpoint(ws: WebSocket):
                 try:
                     conversation_id = int(msg.get("conversation_id") or 0)
                     body = msg.get("body") or ""
+                    reply_to = None
+                    try:
+                        reply_to = int(msg.get("reply_to") or 0) or None
+                    except (ValueError, TypeError):
+                        pass
                     members = db.dm_member_target_langs(conversation_id)
                     sender_id = user["id"]
                     sender_member = next((m for m in members if m["user_id"] == sender_id), None)
@@ -731,7 +765,11 @@ async def ws_endpoint(ws: WebSocket):
                             err("dm", f"translate failed, sending without translation: {e}")
                     else:
                         log("dm", f"same native_lang={sender_native!r} or not configured — skipping translation")
-                    saved = db.dm_add_text_message(conversation_id, sender_id, body, translations)
+                    saved = db.dm_add_text_message(conversation_id, sender_id, body, translations, reply_to_id=reply_to)
+                    if saved.get("reply_to_id"):
+                        saved["reply_preview"] = db.dm_get_reply_preview(saved["reply_to_id"])
+                    else:
+                        saved["reply_preview"] = None
                     _dm_broadcast(conversation_id, {
                         "type": "dm_message",
                         "message": saved,
@@ -1215,6 +1253,85 @@ async def dm_tts(message_id: int, request: Request):
             media_type="audio/mpeg",
             headers={"Cache-Control": "no-store"},
         )
+
+
+# ============================================================
+# Image messages (Cloudflare R2)
+# ============================================================
+@app.post("/dm/conversations/{conversation_id}/image")
+async def dm_upload_image(conversation_id: int, request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    if not db.dm_is_member(conversation_id, u["id"]):
+        raise HTTPException(403, "No tienes acceso a esta conversación")
+
+    s3 = _get_s3()
+    if not s3:
+        raise HTTPException(503, "Almacenamiento de imágenes no configurado")
+
+    mime = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
+    if mime not in IMAGE_MIME_EXT:
+        raise HTTPException(415, "Tipo de imagen no permitido")
+
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, "Imagen vacía")
+    if len(data) > IMAGE_MAX_BYTES:
+        raise HTTPException(413, "Imagen demasiado grande (max 10MB)")
+
+    ext = IMAGE_MIME_EXT[mime]
+    key = f"dm/{conversation_id}/{uuid.uuid4().hex}{ext}"
+
+    try:
+        s3.put_object(Bucket=R2_BUCKET, Key=key, Body=data, ContentType=mime)
+    except Exception as e:
+        err("r2", f"upload failed: {e}")
+        raise HTTPException(502, "Error subiendo imagen")
+
+    reply_to_id = None
+    try:
+        reply_to_id = int(request.headers.get("x-reply-to-id") or "0") or None
+    except ValueError:
+        pass
+
+    msg = db.dm_add_image_message(
+        conversation_id=conversation_id,
+        sender_user_id=u["id"],
+        image_url=key,
+        reply_to_id=reply_to_id,
+    )
+    if msg.get("reply_to_id"):
+        msg["reply_preview"] = db.dm_get_reply_preview(msg["reply_to_id"])
+    _dm_broadcast(conversation_id, {"type": "dm_message", "message": msg})
+    _notify_dm_message(msg)
+    return msg
+
+
+@app.get("/dm/image/{message_id}")
+async def dm_image(message_id: int, request: Request):
+    u = _cookie_user(request)
+    if not u:
+        raise HTTPException(401, "No has iniciado sesión")
+    msg = db.dm_get_message(message_id, u["id"])
+    if not msg or not msg.get("image_url"):
+        raise HTTPException(404, "Imagen no encontrada")
+
+    s3 = _get_s3()
+    if not s3:
+        raise HTTPException(503, "Almacenamiento no configurado")
+
+    key = msg["image_url"]
+    try:
+        url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": R2_BUCKET, "Key": key},
+            ExpiresIn=3600,
+        )
+        return RedirectResponse(url)
+    except Exception as e:
+        err("r2", f"presign failed: {e}")
+        raise HTTPException(502, "Error generando URL de imagen")
 
 
 # ============================================================

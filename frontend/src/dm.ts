@@ -17,6 +17,7 @@ const renderedMessages = new Map<number, DmMessage>();
 let lastRenderedSenderId = 0;
 let lastRenderedDateStr = "";
 let pendingIdCounter = -1;
+let replyToMessage: DmMessage | null = null;
 
 function currentUserId(): number {
   return Number(app.currentUser?.id || 0);
@@ -45,14 +46,13 @@ function dateKey(ts: number): string {
 function formatListTime(ts: number): string {
   const d = new Date(ts * 1000);
   const now = new Date();
-  if (d.toDateString() === now.toDateString()) {
-    return formatHour(ts);
-  }
+  if (d.toDateString() === now.toDateString()) return formatHour(ts);
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
 function messagePreview(message?: DmMessage | null): string {
   if (!message) return t("dm-preview-empty");
+  if (message.kind === "image") return "📷 Imagen";
   if (message.kind === "voice") {
     const secs = Math.max(0, Math.round((message.voice_duration_ms || 0) / 1000));
     return `${t("dm-preview-voice")} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
@@ -119,53 +119,36 @@ export function renderConversations(): void {
 export function openNewDm(): void {
   showPanel("panelNewDm");
   const input = $opt<HTMLInputElement>("newDmEmail");
-  if (input) {
-    input.value = "";
-    setTimeout(() => input.focus(), 50);
-  }
+  if (input) { input.value = ""; setTimeout(() => input.focus(), 50); }
 }
 
 export async function doCreateDm(): Promise<void> {
   const input = $<HTMLInputElement>("newDmEmail");
   const email = input.value.trim();
-  if (!email) {
-    toast(t("dm-email-required"));
-    return;
-  }
+  if (!email) { toast(t("dm-email-required")); return; }
   try {
     const r = await fetch("/dm/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     });
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({}));
-      toast(e.detail || t("dm-create-error"));
-      return;
-    }
+    if (!r.ok) { const e = await r.json().catch(() => ({})); toast(e.detail || t("dm-create-error")); return; }
     const conv = await r.json();
     closeOverlay();
     await loadConversations();
     openChat(conv.id);
-  } catch {
-    toast(t("toast-network-error"));
-  }
+  } catch { toast(t("toast-network-error")); }
 }
 
 export async function openChat(id: number): Promise<void> {
   let conv = conversations.find((c) => c.id === id) || null;
-  if (!conv) {
-    await loadConversations();
-    conv = conversations.find((c) => c.id === id) || null;
-  }
-  if (!conv) {
-    toast(t("dm-chat-not-found"));
-    return;
-  }
+  if (!conv) { await loadConversations(); conv = conversations.find((c) => c.id === id) || null; }
+  if (!conv) { toast(t("dm-chat-not-found")); return; }
   activeConversation = conv;
   renderedMessages.clear();
   lastRenderedSenderId = 0;
   lastRenderedDateStr = "";
+  clearReply();
   $("chatName").textContent = conv.participant.nickname || conv.participant.email;
   $("chatMeta").textContent = conv.participant.email;
   $("chatAvatar").textContent = (conv.participant.nickname || conv.participant.email).charAt(0).toUpperCase();
@@ -176,6 +159,24 @@ export async function openChat(id: number): Promise<void> {
   if (sel) sel.value = myLang;
   send({ command: "dm_set_lang", conversation_id: id, target_lang: myLang });
   await loadMessages(id);
+  setupClipboardPaste();
+}
+
+function setupClipboardPaste(): void {
+  const input = $opt<HTMLInputElement>("chatInput");
+  if (!input) return;
+  input.addEventListener("paste", (ev: ClipboardEvent) => {
+    const items = ev.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        ev.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) showImagePreview(file);
+        return;
+      }
+    }
+  });
 }
 
 async function loadMessages(id: number): Promise<void> {
@@ -198,6 +199,19 @@ async function loadMessages(id: number): Promise<void> {
   } catch {
     $("chatMessages").innerHTML = `<div class="record-empty">${escapeHtml(t("dm-load-error"))}</div>`;
   }
+}
+
+function renderReplyQuote(message: DmMessage): string {
+  const rp = message.reply_preview;
+  if (!rp) return "";
+  const mine = message.sender_user_id === currentUserId();
+  const borderColor = mine ? "#06d755" : "#6b7280";
+  const name = escapeHtml(rp.sender_name || "");
+  const preview = escapeHtml(rp.body || "");
+  return `<div class="reply-quote" onclick="scrollToMessage(${rp.id})" style="border-left-color:${borderColor}">
+    <span class="reply-quote-name">${name}</span>
+    <span class="reply-quote-text">${preview}</span>
+  </div>`;
 }
 
 function renderMessage(message: DmMessage, animate: boolean): void {
@@ -232,15 +246,28 @@ function renderMessage(message: DmMessage, animate: boolean): void {
     ? (activeConversation?.participant?.native_lang || "")
     : (app.currentUser?.native_lang || "");
 
-  if (message.kind === "voice") {
+  if (message.reply_preview) {
+    div.innerHTML += renderReplyQuote(message);
+  }
+
+  if (message.kind === "image" && message.image_url) {
+    const img = document.createElement("img");
+    img.className = "chat-img";
+    img.src = `/dm/image/${message.id}`;
+    img.alt = "Imagen";
+    img.loading = "lazy";
+    img.onclick = () => openLightbox(img.src);
+    div.appendChild(img);
+  } else if (message.kind === "voice") {
     const secs = Math.max(0, Math.round((message.voice_duration_ms || 0) / 1000));
     const hasTranscript = message.transcript && message.transcript.trim();
     const translatedText = translationKey ? (message.translations_json?.[translationKey] || "") : "";
-    div.innerHTML = `<button class="voice-bubble" onclick="playDmVoice(${message.id})">
+    const voiceHtml = `<button class="voice-bubble" onclick="playDmVoice(${message.id})">
       <span class="voice-play">▶</span>
       <span class="voice-slider-wrap"><span class="voice-slider-fill"></span></span>
       <span class="voice-duration">${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}</span>
     </button>${hasTranscript ? `<span class="chat-transcript">${escapeHtml(message.transcript!)}</span>` : ""}${translatedText ? `<span class="chat-translation">${escapeHtml(translatedText)}</span>` : ""}`;
+    div.insertAdjacentHTML("beforeend", voiceHtml);
   } else {
     const bodyEl = document.createElement("span");
     bodyEl.className = "chat-body";
@@ -266,6 +293,116 @@ function renderMessage(message: DmMessage, animate: boolean): void {
   scrollDown("chatMessages");
 }
 
+// ============================================================
+// Reply system
+// ============================================================
+function setReply(message: DmMessage): void {
+  replyToMessage = message;
+  const bar = $opt("chatReplyBar");
+  if (!bar) return;
+  const mine = message.sender_user_id === currentUserId();
+  const name = mine
+    ? (app.currentUser?.nickname || "Tú")
+    : (activeConversation?.participant?.nickname || "");
+  let preview = message.body || message.transcript || "";
+  if (message.kind === "image") preview = "📷 Imagen";
+  if (message.kind === "voice") preview = "🎙 Nota de voz";
+  bar.innerHTML = `<div class="reply-bar-content">
+    <span class="reply-bar-name">${escapeHtml(name)}</span>
+    <span class="reply-bar-text">${escapeHtml(preview.slice(0, 80))}</span>
+  </div><button class="reply-bar-close" onclick="clearReply()">✕</button>`;
+  bar.style.display = "flex";
+  $opt<HTMLInputElement>("chatInput")?.focus();
+}
+
+export function clearReply(): void {
+  replyToMessage = null;
+  const bar = $opt("chatReplyBar");
+  if (bar) bar.style.display = "none";
+}
+
+export function scrollToMessage(msgId: number): void {
+  const el = document.getElementById(`dm-msg-${msgId}`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("highlight");
+  setTimeout(() => el.classList.remove("highlight"), 1500);
+}
+
+// ============================================================
+// Image upload + preview + lightbox
+// ============================================================
+export function triggerImageUpload(): void {
+  const input = $opt<HTMLInputElement>("chatImageInput");
+  if (input) input.click();
+}
+
+export function onImageFileSelected(): void {
+  const input = $opt<HTMLInputElement>("chatImageInput");
+  if (!input?.files?.length) return;
+  showImagePreview(input.files[0]);
+  input.value = "";
+}
+
+function showImagePreview(file: File): void {
+  if (!file.type.startsWith("image/")) { toast("Solo se permiten imágenes"); return; }
+  if (file.size > 10 * 1024 * 1024) { toast("Imagen demasiado grande (max 10MB)"); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const modal = $opt("imagePreviewModal");
+    const img = $opt<HTMLImageElement>("imagePreviewImg");
+    if (!modal || !img) return;
+    img.src = reader.result as string;
+    (modal as HTMLElement & { _file?: File })._file = file;
+    modal.style.display = "flex";
+  };
+  reader.readAsDataURL(file);
+}
+
+export function cancelImagePreview(): void {
+  const modal = $opt("imagePreviewModal");
+  if (modal) modal.style.display = "none";
+}
+
+export async function sendImagePreview(): Promise<void> {
+  const modal = $opt("imagePreviewModal") as HTMLElement & { _file?: File } | null;
+  if (!modal?._file || !activeConversation) return;
+  const file = modal._file;
+  modal.style.display = "none";
+  toast("Enviando imagen...");
+
+  const headers: Record<string, string> = { "Content-Type": file.type };
+  if (replyToMessage) {
+    headers["X-Reply-To-Id"] = String(replyToMessage.id);
+    clearReply();
+  }
+
+  try {
+    const r = await fetch(`/dm/conversations/${activeConversation.id}/image`, {
+      method: "POST",
+      headers,
+      body: file,
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); toast(e.detail || "Error subiendo imagen"); }
+  } catch { toast(t("toast-network-error")); }
+}
+
+export function openLightbox(src: string): void {
+  const lb = $opt("lightbox");
+  const img = $opt<HTMLImageElement>("lightboxImg");
+  if (!lb || !img) return;
+  img.src = src;
+  lb.style.display = "flex";
+}
+
+export function closeLightbox(): void {
+  const lb = $opt("lightbox");
+  if (lb) lb.style.display = "none";
+}
+
+// ============================================================
+// Bubble context menu
+// ============================================================
 let _activeBubbleMenu: HTMLElement | null = null;
 
 function dismissBubbleMenu(): void {
@@ -283,13 +420,17 @@ function showBubbleMenu(message: DmMessage, bubbleEl: HTMLElement): void {
     ? (activeConversation?.participant?.native_lang || "")
     : (app.currentUser?.native_lang || "");
   const actions: Array<{ label: string; action: () => void }> = [];
+
+  actions.push({
+    label: t("bubble-menu-reply") || "Responder",
+    action: () => { setReply(message); dismissBubbleMenu(); },
+  });
+
   if (text) {
     actions.push({
       label: t("bubble-menu-translate"),
       action: () => {
-        if (translationKey) {
-          send({ command: "dm_translate_bubble", message_id: message.id, target_lang: translationKey });
-        }
+        if (translationKey) send({ command: "dm_translate_bubble", message_id: message.id, target_lang: translationKey });
         dismissBubbleMenu();
       },
     });
@@ -327,10 +468,7 @@ function showBubbleMenu(message: DmMessage, bubbleEl: HTMLElement): void {
   menu.style.top = `${top + window.scrollY}px`;
   menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 170))}px`;
   const dismiss = (ev: Event) => {
-    if (!menu.contains(ev.target as Node)) {
-      dismissBubbleMenu();
-      document.removeEventListener("pointerdown", dismiss);
-    }
+    if (!menu.contains(ev.target as Node)) { dismissBubbleMenu(); document.removeEventListener("pointerdown", dismiss); }
   };
   setTimeout(() => document.addEventListener("pointerdown", dismiss), 50);
 }
@@ -338,9 +476,7 @@ function showBubbleMenu(message: DmMessage, bubbleEl: HTMLElement): void {
 function makeLongPressHandler(message: DmMessage, bubbleEl: HTMLElement) {
   return (ev: PointerEvent) => {
     if (ev.pointerType === "mouse") return;
-    const timer = setTimeout(() => {
-      showBubbleMenu(message, bubbleEl);
-    }, 500);
+    const timer = setTimeout(() => showBubbleMenu(message, bubbleEl), 500);
     const cancel = () => clearTimeout(timer);
     bubbleEl.addEventListener("pointerup", cancel, { once: true });
     bubbleEl.addEventListener("pointermove", cancel, { once: true });
@@ -360,6 +496,9 @@ export function onDmBubbleTranslation(m: DmBubbleTranslationMsg): void {
   transEl.textContent = m.translated;
 }
 
+// ============================================================
+// Send text
+// ============================================================
 export function sendChatText(): void {
   if (!activeConversation) return;
   const input = $<HTMLInputElement>("chatInput");
@@ -375,12 +514,20 @@ export function sendChatText(): void {
     sender_user_id: currentUserId(),
     kind: "text",
     body,
-    voice_path: null,
-    voice_mime: null,
-    voice_duration_ms: null,
-    voice_size_bytes: null,
+    voice_path: null, voice_mime: null, voice_duration_ms: null, voice_size_bytes: null,
     translations_json: {},
     transcript: null,
+    image_url: null,
+    reply_to_id: replyToMessage?.id || null,
+    reply_preview: replyToMessage ? {
+      id: replyToMessage.id,
+      sender_user_id: replyToMessage.sender_user_id,
+      sender_name: replyToMessage.sender_user_id === currentUserId()
+        ? (app.currentUser?.nickname || "Tú")
+        : (activeConversation?.participant?.nickname || ""),
+      kind: replyToMessage.kind,
+      body: replyToMessage.body || replyToMessage.transcript || (replyToMessage.kind === "image" ? "📷 Imagen" : ""),
+    } : null,
     created_at: now,
     deleted_at: null,
     is_voice: false,
@@ -389,14 +536,17 @@ export function sendChatText(): void {
   const pending = document.getElementById(`dm-msg-${tempId}`);
   if (pending) pending.classList.add("sending");
 
-  send({ command: "dm_send_text", conversation_id: activeConversation.id, body });
+  const cmd: { command: string; conversation_id: number; body: string; reply_to?: number } = {
+    command: "dm_send_text", conversation_id: activeConversation.id, body,
+  };
+  if (replyToMessage) cmd.reply_to = replyToMessage.id;
+  send(cmd);
+  clearReply();
+  updateActionBtn();
 }
 
 export function onChatInputKey(ev: KeyboardEvent): void {
-  if (ev.key === "Enter" && !ev.shiftKey) {
-    ev.preventDefault();
-    sendChatText();
-  }
+  if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); sendChatText(); }
 }
 
 export function onDmMessage(m: DmMessageMsg): void {
@@ -420,11 +570,7 @@ export function onDmMessage(m: DmMessageMsg): void {
       }
     }
     renderMessage(m.message, true);
-    send({
-      command: "dm_mark_read",
-      conversation_id: m.message.conversation_id,
-      message_id: m.message.id,
-    });
+    send({ command: "dm_mark_read", conversation_id: m.message.conversation_id, message_id: m.message.id });
   }
   loadConversations();
 }
@@ -436,45 +582,30 @@ export function backToMessages(): void {
 
 export function toggleChatVoiceNote(): void {
   if (!activeConversation) return;
-  toggleVoiceNote(activeConversation.id, (message) => {
-    renderMessage(message, true);
-    loadConversations();
-  });
+  toggleVoiceNote(activeConversation.id, (message) => { renderMessage(message, true); loadConversations(); });
 }
 
 export function startChatVoice(): void {
   if (!activeConversation) return;
-  startRecording(activeConversation.id, (message) => {
-    renderMessage(message, true);
-    loadConversations();
-  });
+  startRecording(activeConversation.id, (message) => { renderMessage(message, true); loadConversations(); });
 }
 
-export function stopChatVoice(): void {
-  stopRecording();
-}
+export function stopChatVoice(): void { stopRecording(); }
+export function cancelChatVoice(): void { cancelRecording(); }
 
-export function cancelChatVoice(): void {
-  cancelRecording();
-}
-
+// ============================================================
+// Audio playback
+// ============================================================
 let _activeAudio: HTMLAudioElement | null = null;
 let _activeAudioId = 0;
 
 export function playDmVoice(messageId: number): void {
   if (_activeAudio && _activeAudioId === messageId) {
-    if (_activeAudio.paused) {
-      _activeAudio.play().catch(() => {});
-      return;
-    }
+    if (_activeAudio.paused) { _activeAudio.play().catch(() => {}); return; }
     _activeAudio.pause();
     return;
   }
-
-  if (_activeAudio) {
-    _activeAudio.pause();
-    resetAudioUI(_activeAudioId);
-  }
+  if (_activeAudio) { _activeAudio.pause(); resetAudioUI(_activeAudioId); }
 
   const audio = new Audio(`/dm/voice/${messageId}`);
   _activeAudio = audio;
@@ -498,25 +629,10 @@ export function playDmVoice(messageId: number): void {
       durEl.textContent = `${m}:${String(s).padStart(2, "0")}`;
     }
   });
-
-  audio.addEventListener("ended", () => {
-    resetAudioUI(messageId);
-    _activeAudio = null;
-    _activeAudioId = 0;
-  });
-
-  audio.addEventListener("pause", () => {
-    if (playBtn && !audio.ended) playBtn.textContent = "▶";
-  });
-
-  audio.addEventListener("play", () => {
-    if (playBtn) playBtn.textContent = "⏸";
-  });
-
-  audio.play().catch(() => {
-    toast(t("dm-voice-play-error"));
-    resetAudioUI(messageId);
-  });
+  audio.addEventListener("ended", () => { resetAudioUI(messageId); _activeAudio = null; _activeAudioId = 0; });
+  audio.addEventListener("pause", () => { if (playBtn && !audio.ended) playBtn.textContent = "▶"; });
+  audio.addEventListener("play", () => { if (playBtn) playBtn.textContent = "⏸"; });
+  audio.play().catch(() => { toast(t("dm-voice-play-error")); resetAudioUI(messageId); });
 }
 
 function resetAudioUI(messageId: number): void {
@@ -527,6 +643,9 @@ function resetAudioUI(messageId: number): void {
   if (fill) fill.style.width = "0%";
 }
 
+// ============================================================
+// Action button (mic/send)
+// ============================================================
 function hasText(): boolean {
   const input = $opt<HTMLInputElement>("chatInput");
   return !!(input && input.value.trim());
@@ -541,9 +660,7 @@ function updateActionBtn(): void {
   snd.style.display = text ? "" : "none";
 }
 
-export function onChatInputChange(): void {
-  updateActionBtn();
-}
+export function onChatInputChange(): void { updateActionBtn(); }
 
 export function onActionBtnDown(ev: Event): void {
   ev.preventDefault();
@@ -553,11 +670,7 @@ export function onActionBtnDown(ev: Event): void {
 
 export function onActionBtnUp(ev: Event): void {
   ev.preventDefault();
-  if (hasText()) {
-    sendChatText();
-    updateActionBtn();
-    return;
-  }
+  if (hasText()) { sendChatText(); updateActionBtn(); return; }
   stopChatVoice();
 }
 
